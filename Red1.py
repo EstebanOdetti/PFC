@@ -10,6 +10,8 @@ from sklearn.model_selection import train_test_split, GridSearchCV
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.linear_model import LinearRegression
 from numpy.linalg import norm
+from sklearn.preprocessing import StandardScaler
+import torch.nn.functional as F
 
 datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\PyThorch Test\datos_sinteticos_ver_3.csv')
 
@@ -27,11 +29,23 @@ datos_Q_tempy = datos_totales["Q_tempy"]
 # Usamos train test split para hacer esquema 80-20
 datos_tr, datos_ts, salida_esperada_tr, salida_esperada_ts = train_test_split(datos, datos_PHI_temp, test_size=0.2,
                                                                               random_state=0)
+
+
 #primero a numpy
 datos_tr = datos_tr.to_numpy()
 datos_ts =datos_ts.to_numpy()
 salida_esperada_tr =salida_esperada_tr.to_numpy()
 salida_esperada_ts =salida_esperada_ts.to_numpy()
+#usamos StandardScaler para normalizar los datos!
+scaler = StandardScaler()
+scaler = scaler.fit(datos_tr)
+datos_tr = scaler.transform(datos_tr)
+scaler = scaler.fit(datos_ts)
+datos_ts = scaler.transform(datos_ts)
+scaler = scaler.fit(salida_esperada_tr.reshape(-1, 1))
+salida_esperada_tr = scaler.transform(salida_esperada_tr.reshape(-1, 1))
+scaler = scaler.fit(salida_esperada_ts.reshape(-1, 1))
+salida_esperada_ts = scaler.transform(salida_esperada_ts.reshape(-1, 1))
 
 
 #Tal cual hacemos en clase, definimos un MPL. 
@@ -43,13 +57,15 @@ class NetMLP(torch.nn.Module):
         self.hidden2 = nn.Linear(size_hidden, size_hidden)
         self.hidden3 = nn.Linear(size_hidden, size_hidden)
         self.hidden4 = nn.Linear(size_hidden, size_hidden)
+        self.hidden5 = nn.Linear(size_hidden, size_hidden)
         self.out = nn.Linear(size_hidden, n_output)
 
     def forward(self, x):
-        x = torch.relu(self.hidden1(x))
-        x = torch.relu(self.hidden2(x))
-        x = torch.relu(self.hidden3(x))
-        x = torch.relu(self.hidden4(x))
+        x = F.rrelu(self.hidden1(x))
+        x = F.rrelu(self.hidden2(x))
+        x = F.rrelu(self.hidden3(x))
+        x = F.rrelu(self.hidden4(x))
+        x = F.rrelu(self.hidden5(x))
         x = self.out(x)        
         return x
 # Dispositivo en que se ejecturá el modelo: 'cuda:0' para GPU y 'cpu' para CPU
@@ -67,10 +83,11 @@ datos_ts = torch.tensor(datos_ts).float()
 
 salida_esperada_tr = torch.tensor(salida_esperada_tr).float()
 salida_esperada_ts = torch.tensor(salida_esperada_ts).float()
+
 # Entrenar la red neuronal 
-net = NetMLP(16,300,1)
+net = NetMLP(16,500,1)
 net = net.to(device)
-optimizer = optim.Adam(net.parameters(), lr=0.0001)
+optimizer = optim.Adam(net.parameters(), lr=0.001)
 criterion =nn.MSELoss()
 loss_list = []
 for i in range(100000):
