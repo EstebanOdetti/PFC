@@ -12,6 +12,17 @@ from sklearn.linear_model import LinearRegression
 from numpy.linalg import norm
 from sklearn.preprocessing import StandardScaler
 import torch.nn.functional as F
+import joblib
+from sklearn.ensemble import RandomForestClassifier, VotingClassifier,RandomForestRegressor
+from sklearn.neural_network import MLPClassifier
+from sklearn import metrics
+import matplotlib.pyplot as plt
+from sklearn.model_selection import train_test_split, GridSearchCV
+import pandas as pd
+from sklearn.neighbors import KNeighborsClassifier
+import time
+from sklearn.model_selection import cross_val_score
+from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, classification_report, r2_score
 
 datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\PyThorch Test\datos_sinteticos_ver_3.csv')
 
@@ -52,22 +63,35 @@ salida_esperada_ts = scaler.transform(salida_esperada_ts.reshape(-1, 1))
 class NetMLP(torch.nn.Module):
     def __init__(self, input_features, size_hidden, n_output):
         super(NetMLP, self).__init__()
-        
         self.hidden1 = nn.Linear(input_features, size_hidden)
         self.hidden2 = nn.Linear(size_hidden, size_hidden)
         self.hidden3 = nn.Linear(size_hidden, size_hidden)
         self.hidden4 = nn.Linear(size_hidden, size_hidden)
         self.hidden5 = nn.Linear(size_hidden, size_hidden)
+        self.hidden6 = nn.Linear(size_hidden, size_hidden)
+        self.hidden7 = nn.Linear(size_hidden, size_hidden)
         self.out = nn.Linear(size_hidden, n_output)
 
     def forward(self, x):
-        x = F.rrelu(self.hidden1(x))
-        x = F.rrelu(self.hidden2(x))
-        x = F.rrelu(self.hidden3(x))
-        x = F.rrelu(self.hidden4(x))
-        x = F.rrelu(self.hidden5(x))
+        x = F.tanh(self.hidden1(x))
+        x = F.tanh(self.hidden2(x))
+        x = F.tanh(self.hidden3(x))
+        x = F.tanh(self.hidden4(x))
+        x = F.tanh(self.hidden5(x))
+        x = F.tanh(self.hidden6(x))
+        x = F.tanh(self.hidden7(x))
         x = self.out(x)        
         return x
+    
+# clfRFR = RandomForestRegressor(n_estimators=1000, n_jobs=-1, random_state=0)
+# CV_RFR = cross_val_score(clfRFR, datos_tr, salida_esperada_tr, cv=5, scoring='r2')
+# clfRFR.fit(datos_tr, salida_esperada_tr)
+# print('RFR cross-validation score sin optimizacion: ')
+# print('R2 score of ' + str(round(CV_RFR.mean(), 2)) + ' with a standard deviation of ' + str(round(CV_RFR.std(), 2)))
+
+# y_pred_RFC = clfRFR.predict(datos_ts)
+# r2 = r2_score(salida_esperada_ts, y_pred_RFC)
+# print("R2 score:", r2)
 # Dispositivo en que se ejecturá el modelo: 'cuda:0' para GPU y 'cpu' para CPU
 device = torch.device('cuda:0')
 
@@ -77,7 +101,7 @@ device = torch.device('cuda:0')
 
 salida_esperada_tr = torch.tensor(salida_esperada_tr).unsqueeze(1)
 dataset = TensorDataset(torch.from_numpy(datos_tr).clone().float(), salida_esperada_tr.float())
-loader = DataLoader(dataset=dataset, batch_size=64, shuffle=True)
+loader = DataLoader(dataset=dataset, batch_size=1000, shuffle=True)
 datos_tr = torch.tensor(datos_tr).float()
 datos_ts = torch.tensor(datos_ts).float()
 
@@ -87,7 +111,7 @@ salida_esperada_ts = torch.tensor(salida_esperada_ts).float()
 # Entrenar la red neuronal 
 net = NetMLP(16,500,1)
 net = net.to(device)
-optimizer = optim.Adam(net.parameters(), lr=0.001)
+optimizer = optim.Adam(net.parameters(), lr=0.0001)
 criterion =nn.MSELoss()
 loss_list = []
 for i in range(100000):
