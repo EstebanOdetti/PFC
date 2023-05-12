@@ -6,11 +6,36 @@ import math
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split, GridSearchCV
+import scipy.io as sio
+import torch.nn.functional as F
+import numpy as np
+import matplotlib.pyplot as plt
+mat_fname = 'Datasets/mi_matriz.mat'
+mat = sio.loadmat(mat_fname)
+matriz_cargada = mat['dataset_matriz']
 
-datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_matriz_ver_6.csv')
 
+#primero mezclamos los casos
+num_casos, _, _, _ = matriz_cargada.shape
+indices_aleatorios = np.random.permutation(num_casos)
+matriz_cargada_mezclada = matriz_cargada[indices_aleatorios]
+# Puedo hacer 138 casos de train y 58 de train (30%)
+train = matriz_cargada_mezclada[0:137,:,:,1:16]
+test = matriz_cargada_mezclada[138:,:,:,1:16]
+temp_train = matriz_cargada_mezclada[0:137,:,:,17]
+temp_test = matriz_cargada_mezclada[138:,:,:,17]
 
-print(datos_totales.shape)
+primeros_10_casos = temp_train[:10]
+#intento de dibujo; NOSE SI ESTA BIEN
+for i in range(10):
+    caso = primeros_10_casos[i]
+    imagen = caso[:, :]  
+    plt.subplot(2, 5, i + 1)  
+    plt.imshow(imagen, cmap='gray')  
+    plt.axis('off')  
+    plt.title(f'Caso {i+1}')  
+plt.tight_layout()
+plt.show()  
 
 class NetCNN(nn.Module):
 
