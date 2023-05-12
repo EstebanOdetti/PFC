@@ -83,10 +83,10 @@ for epoch in range(1000):
         running_loss += loss.item()
 
     # Calcular la pérdida promedio para esta época
-    epoch_loss = running_loss / (X_train.shape[0] // batch_size)
+    epoch_loss = running_loss / (datos_tr.shape[0] // batch_size)
 
     # Imprimir la pérdida promedio para esta época
-    print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, num_epochs, epoch_loss))
+    print('Epoch [{}/{}], Loss: {:.4f}'.format(epoch+1, 1000, epoch_loss))
 
 
 
