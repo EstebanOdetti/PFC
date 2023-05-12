@@ -15,7 +15,7 @@ print(os.getcwd())
 mat_fname = 'Datasets/mi_matriz.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
-from torch.utils.data import TensorDataset, DataLoader
+from torch.utils.data import Dataset, DataLoader
 
 
 #primero mezclamos los casos
@@ -72,7 +72,22 @@ optimmizer=torch.optim.Adam(net.parameters(),lr=learning_rate)
 criterion = torch.nn.CrossEntropyLoss() 
 # Creamos un loader iterable indicandole que debe leer los datos a partir de
 # del dataset creado en el paso anterior. Este objeto puede ser iterado
-loader = DataLoader(dataset=train, batch_size=3, shuffle=True)
+##Pero para nuestro caso tenemos que definir el dataset
+#class CustomDataset(Dataset):
+#    def __init__(self, data):
+#        self.data = data
+#        
+#    def __getitem__(self, index):
+#        x = self.data[index, 0]
+#        y = self.data[index, 1:]
+#        return x, y
+#    
+#    def __len__(self):
+#        return self.data.shape[0]
+#loader = CustomDataset(train)
+loader = DataLoader(dataset=train, batch_size=6, shuffle=True)
+print(len(loader))
+print(len(loader.dataset))
 # Número de épocas
 num_epochs = 5
 # Lista en la que iremos guardando el valor de la función de pérdida en cada 
@@ -82,29 +97,35 @@ loss_list = []
 
 # Bucle de entrenamiento
 for i in range(num_epochs):
-
+    #print(loader.data[i,1,1,0])
     # Itero sobre todos los batches del dataset
-    for x, y in loader:
+    
+    for x in loader:
         # Seteo en cero los gradientes de los parámetros a optimizar
+        
         optimmizer.zero_grad()
-
+        
         # Movemos los tensores a memoria de GPU o CPU
         x = x.to(device)
-        y = y.to(device)
+        ##quiero ver la forma de cada elemento
+
+        print(x[0].shape)
+        
+        #y = y.to(device)
        
         # Realizo la pasada forward por la red
-        loss = criterion(net(x), y)
+        #loss = criterion(net(x), y)
         
         # Realizo la pasada backward por la red        
-        loss.backward()
+        #loss.backward()
         
         # Actualizo los pesos de la red con el optimizador
-        optimmizer.step()
+        #optimmizer.step()
 
         # Me guardo el valor actual de la función de pérdida para luego graficarlo
-        loss_list.append(loss.data.item())
+        #loss_list.append(loss.data.item())
 
     # Muestro el valor de la función de pérdida cada 100 iteraciones        
     #if i > 0 and i % 100 == 0:
-    print('Epoch %d, loss = %g' % (i, loss))
+    #print('Epoch %d, loss = %g' % (i, loss))
     
