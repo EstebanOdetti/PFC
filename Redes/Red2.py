@@ -26,7 +26,7 @@ class Net(nn.Module):
         x = self.fc4(x)
         return x
 
-datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\PyThorch Test\datos_sinteticos_ver_3.csv')
+datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_ver_3.csv')
 # Seleccionamos las columnas deseadas
 columnas_deseadas = ["x", "y", "borde", "model.k", "model.G", "model.c", "BN", "BS", "Be", "Bo", "columna_DIR1", "columna_DIR2", "columna_NEU1", "columna_NEU2", "columna_ROB1", "columna_ROB2"]
 datos = datos_totales[columnas_deseadas]

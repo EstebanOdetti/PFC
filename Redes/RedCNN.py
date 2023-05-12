@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split, GridSearchCV
 
-datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\PyThorch Test\datos_sinteticos_matriz_ver_6.csv')
+datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_matriz_ver_6.csv')
 
 
 print(datos_totales.shape)
