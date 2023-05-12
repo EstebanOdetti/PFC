@@ -10,6 +10,8 @@ import scipy.io as sio
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+print(os.getcwd())
 mat_fname = 'Datasets/mi_matriz.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
@@ -58,6 +60,8 @@ class CNNRegressor(nn.Module):
         x = x.view(x.size(0), -1)
         x = self.fc(x)
         return x
+# Dispositivo en que se ejecturá el modelo: 'cuda:0' para GPU y 'cpu' para CPU
+device = torch.device('cpu')
 net=CNNRegressor()
 # Tasa de aprendizaje inicial para el gradiente descendente
 learning_rate = 0.0001
@@ -84,9 +88,9 @@ for i in range(num_epochs):
         # Seteo en cero los gradientes de los parámetros a optimizar
         optimmizer.zero_grad()
 
-        # Movemos los tensores a memoria de GPU, no hay GPU por ahora cpu
-       # x = x.to(device)
-       # y = y.to(device)
+        # Movemos los tensores a memoria de GPU o CPU
+        x = x.to(device)
+        y = y.to(device)
        
         # Realizo la pasada forward por la red
         loss = criterion(net(x), y)
@@ -103,3 +107,4 @@ for i in range(num_epochs):
     # Muestro el valor de la función de pérdida cada 100 iteraciones        
     #if i > 0 and i % 100 == 0:
     print('Epoch %d, loss = %g' % (i, loss))
+    
