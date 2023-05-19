@@ -17,34 +17,6 @@ from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 
 
-# Definir la función de pérdida
-def loss_fn(model, Dataset):
-    # Pérdida de la ecuación diferencial
-    # requerimos gradiente
-    x.requires_grad = True
-    # hacemos la prediccion
-    phi_hat = model(x)
-    # calculamos la primera derivada 
-    grad_phi = grad(phi_hat, x, grad_outputs=torch.ones_like(phi_hat), create_graph=True)[0]
-    # calculamos la segunda derivada (laplaciano)
-    laplace_phi = torch.zeros_like(phi_hat)
-    for i in range(x.shape[-1]):
-        grad_phi_i = grad_phi[:, i]
-        grad_grad_phi_i = grad(grad_phi_i, x, grad_outputs=torch.ones_like(grad_phi_i), create_graph=True)[0]
-        laplace_phi += grad_grad_phi_i[:, i]
-    # calculamos la funcion de perdida
-    loss_pde = torch.mean(((k * laplace_phi) + Q)**2)
-  
-    # Pérdida de las condiciones de contorno
-    phi_bc_pred = model(x_bc)
-    loss_bc = torch.mean((phi_bc - phi_bc_pred)**2)
-
-    # Pérdida total
-    loss = loss_pde + loss_bc
-    
-    return loss
-
-
 mat_fname = 'Datasets/mi_matriz.mat'
 mat_fname_EO = 'Datasets/mi_matriz_conmuta_este_oeste.mat'
 mat = sio.loadmat(mat_fname)
