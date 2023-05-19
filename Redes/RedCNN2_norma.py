@@ -115,18 +115,6 @@ std_temp_train_EO = torch.std(temp_train_tensor_EO)
 temp_train_tensor_EO_normalized = (temp_train_tensor_EO - mean_temp_train_EO) / std_temp_train_EO
 temp_test_tensor_EO_normalized = (temp_test_tensor_EO - mean_temp_train_EO) / std_temp_train_EO
 
-'''
-primeros_10_casos = temp_train_tensor[34:44]
-for i in range(10):
-    caso = primeros_10_casos[i]
-    imagen = caso[:, :]  
-    plt.subplot(2, 5, i + 1)  
-    plt.imshow(imagen, cmap='gray')  
-    plt.axis('off')  
-    plt.title(f'Caso {i+1}')  
-plt.tight_layout()
-plt.show()  
-'''
 
 # Creamos un TensorDataset a partir de tus tensores
 train_dataset = TensorDataset(train_tensor.permute(0, 3, 1, 2), temp_train_tensor) # Reordenamos las dimensiones aquí
@@ -136,6 +124,14 @@ train_dataset_EO = TensorDataset(train_tensor_EO.permute(0, 3, 1, 2), temp_train
 test_dataset = TensorDataset(test_tensor.permute(0, 3, 1, 2), temp_test_tensor) # Reordenamos las dimensiones aquí
 
 test_dataset_EO = TensorDataset(test_tensor_EO.permute(0, 3, 1, 2), temp_test_tensor_EO) # Reordenamos las dimensiones aquí
+
+train_dataset_normalized = TensorDataset(train_tensor_normalized.permute(0, 3, 1, 2), temp_train_tensor_normalized) # Reordenamos las dimensiones aquí
+
+train_dataset_EO_normalized = TensorDataset(train_tensor_EO_normalized.permute(0, 3, 1, 2), temp_train_tensor_EO_normalized) # Reordenamos las dimensiones aquí
+
+test_dataset = TensorDataset(test_tensor_normalized.permute(0, 3, 1, 2), temp_test_tensor_normalized) # Reordenamos las dimensiones aquí
+
+test_dataset_EO = TensorDataset(test_tensor_EO_normalized.permute(0, 3, 1, 2), temp_test_tensor_EO_normalized) # Reordenamos las dimensiones aquí
 
 # Creamos DataLoaders a partir de los TensorDatasets
 batch_size = 32  # Define el tamaño del batch que desees
