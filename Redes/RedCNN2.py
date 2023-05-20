@@ -66,7 +66,6 @@ test_tensor = torch.from_numpy(test).float()
 temp_train_tensor = torch.from_numpy(temp_train).float()
 temp_test_tensor = torch.from_numpy(temp_test).float()
 
-'''
 primeros_10_casos = temp_train_tensor[34:44]
 for i in range(10):
     caso = primeros_10_casos[i]
@@ -77,7 +76,7 @@ for i in range(10):
     plt.title(f'Caso {i+1}')  
 plt.tight_layout()
 plt.show()  
-'''
+
 
 # Creamos un TensorDataset a partir de tus tensores
 train_dataset = TensorDataset(train_tensor.permute(0, 3, 1, 2), temp_train_tensor) # Reordenamos las dimensiones aquí
@@ -94,6 +93,10 @@ class CNN(nn.Module):
         super(CNN, self).__init__()  
         self.conv1 = nn.Conv2d(16, 16, kernel_size=3, stride=1, padding=0)
         self.pool = nn.MaxPool2d(kernel_size=2, stride=2)
+        #esto roimpe la geometria del problema
+        # conv2d conv2d conv2d conv2d con padiing para tener siempre el mismo tamaño de la plac
+        #placa en blanco salvo los bordes y la salida le pedis q sea lo mas parecida a la solucion final. Y en cada capa le exigis las cond de borde
+        # 3 o 4 capas, como fotos en el tiempo
         self.fc = nn.Linear(16 * 2 * 2, 49)  # Cambiar 64 a 49 (7 * 7)
         
     def forward(self, x):
