@@ -1,3 +1,4 @@
+
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -75,54 +76,47 @@ test_dataset = TensorDataset(temp_dirichlet_test_tensor, temp_test_tensor)
 batch_size = 32
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
+
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
         self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3,3), stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=(3,3), stride=1, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=(3,3), stride=1, padding=1)
-        self.conv4 = nn.Conv2d(in_channels=64, out_channels=128, kernel_size=(3,3), stride=1, padding=1)
-        #self.dropout = nn.Dropout2d(p=0.2)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
+        self.conv2 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(3,3), stride=1, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(3,3), stride=1, padding=1)
+        self.conv4 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3,3), stride=1, padding=1)
 
     def forward(self, x):
-        #x1 = self.dropout(F.leaky_relu(self.conv1(x)))
-        x1 = F.relu(self.conv1(x))
-        #x2 = self.dropout(F.leaky_relu(self.conv2(x1)))
-        x2 = F.relu(self.conv2(x1))
-        #x3 = self.dropout(F.leaky_relu(self.conv3(x2)))
-        x3 = F.relu(self.conv3(x2))
-        x4 = self.conv4(x3)  # Normalmente no aplicamos Dropout en la capa de salida
-        return x1, x2, x3, x4
+        x = F.leaky_relu(self.conv1(x))
+        x = torch.sum(x, dim=1, keepdim=True)
+        
+        x = F.leaky_relu(self.conv2(x))
+        x = torch.sum(x, dim=1, keepdim=True)
+        
+        x = F.leaky_relu(self.conv3(x))
+        x = torch.sum(x, dim=1, keepdim=True)
+        
+        x = self.conv4(x)
+        out = torch.sum(x, dim=1, keepdim=True)
+
+        return out
 
 
 def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
-    loss_borde_total = 0
-    loss_interior_total = 0
-    num_feature_maps = 0
+    loss_borde = 0
+    loss_interior = 0
+    for i, output in enumerate(outputs):
+        # calculamos la pérdida en los bordes sumando todos los canales
+        border_loss = F.mse_loss(output, target)
+        loss_borde += border_loss
 
-    for output in outputs:  # Recorre todas las salidas de capa
-        batch_size, num_channels, _, _ = output.shape  # Obtén el número de canales en esta salida de capa
+        # calculamos la pérdida en el interior solo para la última capa
+        if i == len(outputs) - 1:
+            interior_loss = F.mse_loss(output[..., 1:-1, 1:-1], target[..., 1:-1, 1:-1])
+            loss_interior += interior_loss
 
-        for i in range(num_channels):  # Recorre cada mapa de características
-            feature_map = output[:, i, :, :].unsqueeze(1)  # Selecciona el mapa de características y añade una dimensión de canal
+    loss_borde /= len(outputs)  # Normalizamos la pérdida en los bordes
 
-            # Calcula la pérdida en los bordes
-            border_loss = F.mse_loss(feature_map, target)
-            loss_borde_total += border_loss
-
-            # Calcula la pérdida en el interior solo para la última capa
-            if i == num_channels - 1:
-                interior_loss = F.mse_loss(feature_map[..., 1:-1, 1:-1], target[..., 1:-1, 1:-1])
-                loss_interior_total += interior_loss
-
-            num_feature_maps += 1
-
-    # Normaliza las pérdidas
-    loss_borde_total /= num_feature_maps
-    loss_interior_total /= num_feature_maps
-
-    return ponderacion_frontera * loss_borde_total + ponderacion_interior * loss_interior_total
-
+    return ponderacion_frontera * loss_borde + ponderacion_interior * loss_interior
 
 def plot_feature_maps(feature_maps, num_cols=6):
     num_kernels = feature_maps.shape[1]
@@ -165,8 +159,8 @@ model = HeatPropagationNet().to(device)
 optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
 # Parámetros para la función de pérdida
-ponderacion_interior = 0.4
-ponderacion_frontera = 0.6
+ponderacion_interior = 0.6
+ponderacion_frontera = 0.4
 
 # Bucle de entrenamiento
 for epoch in range(10000):
@@ -178,34 +172,10 @@ for epoch in range(10000):
         optimizer.zero_grad()
 
         # Pase adelante, cálculo de la pérdida, pase atrás y optimización
-        feature_maps1, feature_maps2, feature_maps3, output = model(inputs)
-        outputs = [feature_maps1, feature_maps2, feature_maps3, output]
-        loss = custom_loss(outputs, labels, ponderacion_interior, ponderacion_frontera)
+        output = model(inputs)
+        loss = custom_loss(output, labels, ponderacion_interior, ponderacion_frontera)
         loss.backward()
         optimizer.step()
 
     # Imprime estadísticas de entrenamiento
     print('Epoch: %d, Loss: %.3f' % (epoch + 1, loss.item()))
-
-    # Visualizar los mapas de características después de cada época
-    if epoch % 100 == 0:  # ajusta este número para visualizar los mapas de características con la frecuencia que desees
-        plot_feature_maps(feature_maps1)
-        plot_feature_maps(feature_maps2)
-        plot_feature_maps(feature_maps3)
-
-        # Visualizar los kernels de las capas convolucionales
-        kernels1 = model.conv1.weight.detach().clone()
-        kernels1 = kernels1 - kernels1.min()
-        kernels1 = kernels1 / kernels1.max()
-        plot_kernels(kernels1)
-
-        kernels2 = model.conv2.weight.detach().clone()
-        kernels2 = kernels2 - kernels2.min()
-        kernels2 = kernels2 / kernels2.max()
-        plot_kernels(kernels2)
-
-        kernels3 = model.conv3.weight.detach().clone()
-        kernels3 = kernels3 - kernels3.min()
-        kernels3 = kernels3 / kernels3.max()
-        plot_kernels(kernels3)
-
