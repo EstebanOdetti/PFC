@@ -15,7 +15,7 @@ from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import mean_squared_error
 from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
-
+from torch.utils.tensorboard import SummaryWriter
 
 mat_fname = 'Datasets/mi_matriz_solo_diritletch'
 mat = sio.loadmat(mat_fname)
@@ -33,6 +33,8 @@ num_pruebas = total_casos - num_entrenamiento
 #obtenermos las temperaturas en los bordes y en el interior es cero (Y ESTO ESS LO Q LE ENTRA A LA RED)
 temp_dirichlet_train = matriz_cargada_mezclada[:num_entrenamiento, :, :, 12]
 temp_dirichlet_test = matriz_cargada_mezclada[num_entrenamiento:, :, :, 12]
+temp_dirichlet_train[:, 1:-1, 1:-1] = 1
+temp_dirichlet_test[:, 1:-1, 1:-1] = 1
 # esto es el ground truth. 
 temp_train = matriz_cargada_mezclada[:num_entrenamiento, :, :, 17]
 temp_test = matriz_cargada_mezclada[num_entrenamiento:, :, :, 17]
@@ -52,15 +54,15 @@ temp_test_tensor = torch.from_numpy(temp_test).float()
 #plt.tight_layout()
 #plt.show()
 # Graficar los primeros 10 casos de solo borde
-#primeros_10_casos = temp_dirichlet_train_tensor[0:10]
-#for i in range(primeros_10_casos.shape[0]):
-#    caso = primeros_10_casos[i]
-#    imagen = caso  # No se necesita [:, :]
-#    plt.subplot(2, 5, i + 1)
-#    plt.imshow(imagen, cmap='hot')
-#    plt.title(f'Caso {i+1}')
-#plt.tight_layout()
-#plt.show()
+primeros_10_casos = temp_dirichlet_train_tensor[0:10]
+for i in range(primeros_10_casos.shape[0]):
+    caso = primeros_10_casos[i]
+    imagen = caso  # No se necesita [:, :]
+    plt.subplot(2, 5, i + 1)
+    plt.imshow(imagen, cmap='hot')
+    plt.title(f'Caso {i+1}')
+plt.tight_layout()
+plt.show()
 # Añadir una dimensión extra para los canales
 temp_dirichlet_train_tensor = temp_dirichlet_train_tensor.unsqueeze(1) # tamaño ahora es [num_entrenamiento, 1, height, width]
 temp_dirichlet_test_tensor = temp_dirichlet_test_tensor.unsqueeze(1) # tamaño ahora es [num_pruebas, 1, height, width]
@@ -76,10 +78,10 @@ test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1)
-        self.conv4 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=3, stride=1, padding=1)
+        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=3, stride=1, padding=1)
+        self.conv2 = nn.Conv2d(in_channels=16, out_channels=32, kernel_size=3, stride=1, padding=1)
+        self.conv3 = nn.Conv2d(in_channels=32, out_channels=64, kernel_size=3, stride=1, padding=1)
+        self.conv4 = nn.Conv2d(in_channels=64, out_channels=1, kernel_size=3, stride=1, padding=1)
         self.dropout = nn.Dropout2d(p=0.2)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
 
     def forward(self, x):
@@ -93,6 +95,7 @@ class HeatPropagationNet(nn.Module):
 def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
     loss_borde = 0
     loss_interior = 0
+    print(len(outputs))
     for i, output in enumerate(outputs):
         # calculamos la pérdida en los bordes sumando todos los canales
         border_loss = F.mse_loss(output, target)
@@ -107,6 +110,38 @@ def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
 
     return ponderacion_frontera * loss_borde + ponderacion_interior * loss_interior
 
+def plot_feature_maps(feature_maps, num_cols=6):
+    num_kernels = feature_maps.shape[1]
+    num_rows = 1+ num_kernels // num_cols
+    fig = plt.figure(figsize=(num_cols,num_rows))
+    for i in range(num_kernels):
+        ax1 = fig.add_subplot(num_rows,num_cols,i+1)
+        ax1.imshow(feature_maps[0, i].cpu().detach().numpy())
+        ax1.axis('off')
+        ax1.set_xticklabels([])
+        ax1.set_yticklabels([])
+
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.show()
+
+    
+def plot_kernels(tensor, num_cols=6):
+    if not tensor.ndim==4:
+        raise Exception("assumes a 4D tensor")
+    if not tensor.shape[-1]==3:
+        raise Exception("last dim needs to be 3 to plot")
+    num_kernels = tensor.shape[0]
+    num_rows = 1+ num_kernels // num_cols
+    fig = plt.figure(figsize=(num_cols,num_rows))
+    for i in range(tensor.shape[0]):
+        ax1 = fig.add_subplot(num_rows,num_cols,i+1)
+        ax1.imshow(tensor[i].cpu().numpy())
+        ax1.axis('off')
+        ax1.set_xticklabels([])
+        ax1.set_yticklabels([])
+
+    plt.subplots_adjust(wspace=0.1, hspace=0.1)
+    plt.show()
 
 # Verifica si CUDA está disponible y selecciona el dispositivo
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -129,10 +164,34 @@ for epoch in range(10000):
         optimizer.zero_grad()
 
         # Pase adelante, cálculo de la pérdida, pase atrás y optimización
-        outputs = model(inputs)
+        feature_maps1, feature_maps2, feature_maps3, output = model(inputs)
+        outputs = [feature_maps1, feature_maps2, feature_maps3, output]
         loss = custom_loss(outputs, labels, ponderacion_interior, ponderacion_frontera)
         loss.backward()
         optimizer.step()
 
     # Imprime estadísticas de entrenamiento
     print('Epoch: %d, Loss: %.3f' % (epoch + 1, loss.item()))
+
+    # Visualizar los mapas de características después de cada época
+    if epoch % 100 == 0:  # ajusta este número para visualizar los mapas de características con la frecuencia que desees
+        plot_feature_maps(feature_maps1)
+        plot_feature_maps(feature_maps2)
+        plot_feature_maps(feature_maps3)
+
+        # Visualizar los kernels de las capas convolucionales
+        kernels1 = model.conv1.weight.detach().clone()
+        kernels1 = kernels1 - kernels1.min()
+        kernels1 = kernels1 / kernels1.max()
+        plot_kernels(kernels1)
+
+        kernels2 = model.conv2.weight.detach().clone()
+        kernels2 = kernels2 - kernels2.min()
+        kernels2 = kernels2 / kernels2.max()
+        plot_kernels(kernels2)
+
+        kernels3 = model.conv3.weight.detach().clone()
+        kernels3 = kernels3 - kernels3.min()
+        kernels3 = kernels3 / kernels3.max()
+        plot_kernels(kernels3)
+
