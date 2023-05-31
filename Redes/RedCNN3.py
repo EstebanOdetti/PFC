@@ -129,10 +129,29 @@ def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
     return ponderacion_frontera * loss_borde_total + ponderacion_interior * loss_interior_total
 
 
-def plot_feature_maps(feature_maps, num_cols=6):
+#plt.ion()  # Habilita el modo interactivo
+
+# Crea las figuras y los ejes que se actualizarán durante el entrenamiento
+#fig_ground_truth, ax_ground_truth = plt.subplots(1, 2)
+#fig_feature_map, ax_feature_map = plt.subplots()
+
+def show_ground_truth(img, label, fig, ax):
+    img = img.cpu().numpy().squeeze()
+    label = label.cpu().numpy().squeeze()
+
+    ax[0].imshow(img)
+    ax[0].title.set_text('Input Image')
+    ax[1].imshow(label)
+    ax[1].title.set_text('Ground Truth')
+    
+    fig.canvas.draw()  
+    fig.canvas.flush_events()
+
+def plot_feature_maps(feature_maps, fig, ax, num_cols=6):
     num_kernels = feature_maps.shape[1]
     num_rows = 1+ num_kernels // num_cols
-    fig = plt.figure(figsize=(num_cols,num_rows))
+    fig.set_size_inches(num_cols,num_rows)
+    fig.clf()
     for i in range(num_kernels):
         ax1 = fig.add_subplot(num_rows,num_cols,i+1)
         ax1.imshow(feature_maps[0, i].cpu().detach().numpy())
@@ -141,8 +160,8 @@ def plot_feature_maps(feature_maps, num_cols=6):
         ax1.set_yticklabels([])
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
-    plt.show()
-
+    fig.canvas.draw()  
+    fig.canvas.flush_events()
     
 def plot_kernels(tensor, num_cols=6):
     if not tensor.ndim==4:
@@ -161,6 +180,9 @@ def plot_kernels(tensor, num_cols=6):
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.show()
+
+# Inicializa el escritor de TensorBoard
+writer = SummaryWriter('runs/experiment_1')
 
 # Verifica si CUDA está disponible y selecciona el dispositivo
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -191,29 +213,40 @@ for epoch in range(10000):
         loss.backward()
         optimizer.step()
 
-    # Imprime estadísticas de entrenamiento
-    print('Epoch: %d, Loss_total: %.3f' % (epoch + 1, loss.item()))
-    print('Epoch: %d, Loss_ultima_capa: %.3f' % (epoch + 1, loss_2.item()))
+    # Añade la pérdida a TensorBoard
+    writer.add_scalar('Loss_total', loss.item(), epoch)
+    writer.add_scalar('Loss_ultima_capa', loss_2.item(), epoch)
+    # Selecciona los primeros 3 mapas de características de cada capa y añade una dimensión de batch
+    feature_map1_single = feature_maps1[0, :3].unsqueeze(0)
+    feature_map2_single = feature_maps2[0, :3].unsqueeze(0)
+    feature_map3_single = feature_maps3[0, :3].unsqueeze(0)
 
-    # Visualizar los mapas de características después de cada época
-    #if epoch % 100 == 0:  # ajusta este número para visualizar los mapas de características con la frecuencia que desees
-        #plot_feature_maps(feature_maps1)
-        #plot_feature_maps(feature_maps2)
-        #plot_feature_maps(feature_maps3)
+    # Asegura que los valores estén en el rango [0, 1]
+    feature_map1_single = (feature_map1_single - feature_map1_single.min()) / (feature_map1_single.max() - feature_map1_single.min())
+    feature_map2_single = (feature_map2_single - feature_map2_single.min()) / (feature_map2_single.max() - feature_map2_single.min())
+    feature_map3_single = (feature_map3_single - feature_map3_single.min()) / (feature_map3_single.max() - feature_map3_single.min())
 
-        # Visualizar los kernels de las capas convolucionales
-        #kernels1 = model.conv1.weight.detach().clone()
-        #kernels1 = kernels1 - kernels1.min()
-        #kernels1 = kernels1 / kernels1.max()
-        #plot_kernels(kernels1)
+    writer.add_images('Feature Maps 1', feature_map1_single, epoch)
+    writer.add_images('Feature Maps 2', feature_map2_single, epoch)
+    writer.add_images('Feature Maps 3', feature_map3_single, epoch)
 
-        #kernels2 = model.conv2.weight.detach().clone()
-        #kernels2 = kernels2 - kernels2.min()
-        #kernels2 = kernels2 / kernels2.max()
-        #plot_kernels(kernels2)
+    # Normaliza las entradas y las etiquetas
+    inputs_normalized = (inputs - inputs.min()) / (inputs.max() - inputs.min())
+    labels_normalized = (labels - labels.min()) / (labels.max() - labels.min())
 
-        #kernels3 = model.conv3.weight.detach().clone()
-        #kernels3 = kernels3 - kernels3.min()
-        #kernels3 = kernels3 / kernels3.max()
-        #plot_kernels(kernels3)
+    writer.add_images('Input Images', inputs_normalized, epoch)
+    writer.add_images('Ground Truth', labels_normalized, epoch)
+
+    kernels = model.conv1.weight.detach().clone()
+    kernels = kernels - kernels.min()
+    kernels = kernels / kernels.max()
+
+    # Comprobar si los kernels tienen un solo canal
+    if kernels.shape[1] == 1:
+        # Triplicar los canales
+        kernels = torch.cat((kernels, kernels, kernels), 1)
+
+    # Ahora puedes agregar los kernels a TensorBoard
+    writer.add_images('conv1 Kernels', kernels, epoch)
+writer.close()
 
