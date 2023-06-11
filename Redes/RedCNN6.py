@@ -20,7 +20,7 @@ from sklearn.metrics import r2_score
 import shutil 
 #Borramos los runs anteriores
 shutil.rmtree('runs')
-mat_fname = 'Datasets/mi_matriz_solo_diritletch'
+mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 
@@ -186,11 +186,11 @@ model = HeatPropagationNet().to(device)
 optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
 # Parámetros para la función de pérdida
-ponderacion_interior = 0.7
-ponderacion_frontera = 0.3
+ponderacion_interior = 0.5
+ponderacion_frontera = 0.5
 
 # Bucle de entrenamiento
-for epoch in range(500):
+for epoch in range(5000):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
