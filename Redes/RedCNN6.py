@@ -95,8 +95,8 @@ class HeatPropagationNet(nn.Module):
     def forward(self, x):
         #capa1
         x1 = F.relu(self.conv1_1(x))
-        #y1 = self.dropout(self.conv1_2(x1))
-        y1 = self.conv1_2(x1)
+        y1 = self.dropout(self.conv1_2(x1))
+        #y1 = self.conv1_2(x1)
         #capa2
         x2 = F.relu(self.conv2_1(y1))
         y2 = self.conv2_2(x2)
@@ -186,11 +186,11 @@ model = HeatPropagationNet().to(device)
 optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
 # Parámetros para la función de pérdida
-ponderacion_interior = 0.5
-ponderacion_frontera = 0.5
+ponderacion_interior = 0.7
+ponderacion_frontera = 0.3
 
 # Bucle de entrenamiento
-for epoch in range(1000):
+for epoch in range(500):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
@@ -237,19 +237,7 @@ for epoch in range(1000):
 
     writer.add_images('Input Images', inputs_normalized, epoch)
     writer.add_images('Ground Truth', labels_normalized, epoch)
-    """
-    kernels = model.conv1.weight.detach().clone()
-    kernels = kernels - kernels.min()
-    kernels = kernels / kernels.max()
 
-    # Comprobar si los kernels tienen un solo canal
-    if kernels.shape[1] == 1:
-        # Triplicar los canales
-        kernels = torch.cat((kernels, kernels, kernels), 1)
-
-    # Ahora puedes agregar los kernels a TensorBoard
-    writer.add_images('conv1 Kernels', kernels, epoch)
-    """
 
 writer.close()
 print("Cambiando a evaluacion...")
@@ -270,7 +258,21 @@ with torch.no_grad():  # No necesitamos calcular gradientes en el test
         loss = custom_loss(outputs, labels)
         total_loss += loss.item()
         num_batches += 1
-        
+
+        # Visualizar las primeras 5 salidas y ground truth
+        if i == 0:
+            for j in range(5):
+                plt.figure(figsize=(10,4))
+                
+                plt.subplot(1, 2, 1)
+                plt.imshow(outputs[-1][j, 0].cpu().numpy(), cmap='hot')
+                plt.title("Output de la red")
+
+                plt.subplot(1, 2, 2)
+                plt.imshow(labels[j, 0].cpu().numpy(), cmap='hot')
+                plt.title("Ground Truth")
+
+                plt.show()
 
 # Calcula las métricas medias
 mean_loss = total_loss / num_batches
