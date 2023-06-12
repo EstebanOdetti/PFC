@@ -83,24 +83,24 @@ class HeatPropagationNet(nn.Module):
 
     def forward(self, x):
         #capa1
-        x1 = F.relu(self.conv1_1(x))
+        x1 = (self.conv1_1(x))
         #y1 = self.dropout(self.conv1_2(x1))
-        y1 = self.conv1_2(x1)
+        y1 = (self.conv1_2(x1))
         #capa2
-        x2 = F.relu(self.conv2_1(y1))
-        y2 =  self.conv2_2(x2)
+        x2 = (self.conv2_1(y1))
+        y2 =  (self.conv2_2(x2))
         #capa3
-        x3 = F.relu(self.conv3_1(y2))
-        y3 =  self.conv3_2(x3)
+        x3 = (self.conv3_1(y2))
+        y3 =  (self.conv3_2(x3))
         #capa4
-        x4 = F.relu(self.conv1_1(y3))
-        y4 =  self.conv1_2(x4)
+        x4 = (self.conv1_1(y3))
+        y4 =  (self.conv1_2(x4))
         #capa5
-        x5 = F.relu(self.conv2_1(y4))
-        y5 =  self.conv2_2(x5)
+        x5 = (self.conv2_1(y4))
+        y5 =  (self.conv2_2(x5))
         #capa6
-        x6 = F.relu(self.conv3_1(y5))
-        y6 =  self.conv3_2(x6)
+        x6 = (self.conv3_1(y5))
+        y6 =  (self.conv3_2(x6))
         return y1, y2, y3, y3, y4, y5, y6
 
 def custom_loss(outputs, target):
