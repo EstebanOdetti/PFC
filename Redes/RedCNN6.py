@@ -32,14 +32,19 @@ total_casos = matriz_cargada_mezclada.shape[0]
 porcentaje_entrenamiento = 0.7
 num_entrenamiento = int(total_casos * porcentaje_entrenamiento)
 num_pruebas = total_casos - num_entrenamiento
+# esto es canal 12 que contiene los bordes nomas. 
+temp_train_dirichlet = matriz_cargada_mezclada[:num_entrenamiento, :, :, 12]
+temp_test_dirichlet = matriz_cargada_mezclada[num_entrenamiento:, :, :, 12]
 # esto es el ground truth. 
 temp_train = matriz_cargada_mezclada[:num_entrenamiento, :, :, 17]
 temp_test = matriz_cargada_mezclada[num_entrenamiento:, :, :, 17]
 #convertis en tensores
 temp_train_tensor = torch.from_numpy(temp_train).float()
 temp_test_tensor = torch.from_numpy(temp_test).float()
+temp_train_tensor_dirichlet = torch.from_numpy(temp_train_dirichlet).float()
+temp_test_tensor_dirichlet = torch.from_numpy(temp_test_dirichlet).float()
 #mostras los 10 primeros casos
-primeros_10_casos = temp_train_tensor[0:10]
+primeros_10_casos = temp_train_tensor_dirichlet[0:10]
 for i in range(10):
     caso = primeros_10_casos[i]
     imagen = caso[:, :]
@@ -58,27 +63,33 @@ plt.show()
 #    plt.title(f'Caso {i+1}')
 #plt.tight_layout()
 #plt.show()
-# Añadir una dimensión extra para los canales a los targets
+# Añadir una dimensión extra para los canales 
 temp_train_tensor = temp_train_tensor.unsqueeze(1)
 temp_test_tensor = temp_test_tensor.unsqueeze(1)
+temp_train_tensor_dirichlet = temp_train_tensor_dirichlet.unsqueeze(1)
+temp_test_tensor_dirichlet = temp_test_tensor_dirichlet.unsqueeze(1)
 # Crear TensorDatasets y DataLoaders
-# Aquí solo estamos considerando los datos de entrenamiento para la validación cruzada.
 train_dataset = TensorDataset(temp_train_tensor, temp_train_tensor)
 test_dataset = TensorDataset(temp_test_tensor, temp_test_tensor)
+train_dataset_dirichlet = TensorDataset(temp_train_tensor_dirichlet, temp_train_tensor)
+test_dataset_dirichlet = TensorDataset(temp_test_tensor_dirichlet, temp_test_tensor)
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
         # Bloque de entrada
-        self.conv1_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
-        self.conv1_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
+        self.conv1_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.conv1_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
 
         # Bloque intermedio
-        self.conv2_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
-        self.conv2_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
+        self.conv2_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.conv2_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
 
         # Bloque de salida
-        self.conv3_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
-        self.conv3_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
+        self.conv3_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.conv3_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
+        
+        self.conv4_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        self.conv4_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
         #self.dropout = nn.Dropout2d(p=0.01)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
 
     def forward(self, x):
@@ -101,7 +112,10 @@ class HeatPropagationNet(nn.Module):
         #capa6
         x6 = (self.conv3_1(y5))
         y6 =  (self.conv3_2(x6))
-        return y1, y2, y3, y3, y4, y5, y6
+        #capa7
+        x7 = (self.conv3_1(y6))
+        y7 =  (self.conv3_2(x7))
+        return y1, y2, y3, y3, y4, y5, y6, y7
 
 def custom_loss(outputs, target):
     loss_tot = 0
@@ -128,10 +142,10 @@ kfold = KFold(n_splits=k_folds, shuffle=True)
 best_val_loss = float('inf')
 best_model_state = None
 
-for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset)):
+for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirichlet)):
     # Dividir los datos de entrenamiento en conjuntos de entrenamiento y validación
-    train_subset = torch.utils.data.Subset(train_dataset, train_index)
-    val_subset = torch.utils.data.Subset(train_dataset, val_index)
+    train_subset = torch.utils.data.Subset(train_dataset_dirichlet, train_index)
+    val_subset = torch.utils.data.Subset(train_dataset_dirichlet, val_index)
 
     # Crea los DataLoader para los conjuntos de entrenamiento y validación
     trainloader = torch.utils.data.DataLoader(train_subset, batch_size=32)
@@ -142,7 +156,7 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset)):
     optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
     # Bucle de entrenamiento y validación
-    for epoch in range(200):
+    for epoch in range(500):
         train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = 0.0, 0.0, 0.0, 0.0 
         num_batches_train, num_batches_val = 0, 0
         for inputs, labels in trainloader:
@@ -189,8 +203,8 @@ model = HeatPropagationNet().to(device)
 model.load_state_dict(best_model_state)
 
 # Crear DataLoader para el conjunto de pruebas
-test_dataset = TensorDataset(temp_test_tensor, temp_test_tensor)
-test_loader = DataLoader(test_dataset, batch_size=32)
+test_dataset_dirichlet = TensorDataset(temp_test_tensor_dirichlet, temp_test_tensor)
+test_loader = DataLoader(test_dataset_dirichlet, batch_size=32)
 
 # Cambia el modelo a modo de evaluación
 model.eval()
