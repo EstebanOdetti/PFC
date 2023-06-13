@@ -121,7 +121,7 @@ class HeatPropagationNet(nn.Module):
         #capa9
         #x9 = (self.conv3_1(y8))
         #y9 =  (self.conv3_2(x9))
-        return y1, y2, y3, y4, y5, y6, y7, y8
+        return y1, y2, y3, y4, y5, y6
 
 def custom_loss(outputs, target):
     loss_tot = 0
@@ -162,7 +162,7 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
     optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
     # Bucle de entrenamiento y validación
-    for epoch in range(250):
+    for epoch in range(200):
         train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = 0.0, 0.0, 0.0, 0.0 
         num_batches_train, num_batches_val = 0, 0
         for inputs, labels in trainloader:
@@ -198,9 +198,10 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
         val_loss_total /= num_batches_val
         val_loss_ultima /= num_batches_val
         
-        if epoch % 50 == 0:
-            print(f'Fold {fold}, Epoch {epoch}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}')
-            print(f'Fold {fold}, Epoch {epoch}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}')
+        if (epoch+1) % 50 == 0:
+            print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}')
+            print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}')
+      
 
 model = HeatPropagationNet().to(device)
 model.load_state_dict(best_model_state)
