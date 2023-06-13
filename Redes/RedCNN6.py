@@ -87,9 +87,6 @@ class HeatPropagationNet(nn.Module):
         # Bloque de salida
         self.conv3_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
-        
-        self.conv4_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
-        self.conv4_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
         #self.dropout = nn.Dropout2d(p=0.01)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
 
     def forward(self, x):
@@ -98,24 +95,30 @@ class HeatPropagationNet(nn.Module):
         #y1 = self.dropout(self.conv1_2(x1))
         y1 = (self.conv1_2(x1))
         #capa2
-        x2 = (self.conv2_1(y1))
-        y2 =  (self.conv2_2(x2))
+        x2 = (self.conv1_1(y1))
+        y2 =  (self.conv1_2(x2))
         #capa3
-        x3 = (self.conv3_1(y2))
-        y3 =  (self.conv3_2(x3))
+        x3 = (self.conv1_1(y2))
+        y3 =  (self.conv1_2(x3))
         #capa4
-        x4 = (self.conv1_1(y3))
-        y4 =  (self.conv1_2(x4))
+        x4 = (self.conv2_1(y3))
+        y4 =  (self.conv2_2(x4))
         #capa5
         x5 = (self.conv2_1(y4))
         y5 =  (self.conv2_2(x5))
         #capa6
-        x6 = (self.conv3_1(y5))
-        y6 =  (self.conv3_2(x6))
+        x6 = (self.conv2_1(y5))
+        y6 =  (self.conv2_2(x6))
         #capa7
         x7 = (self.conv3_1(y6))
         y7 =  (self.conv3_2(x7))
-        return y1, y2, y3, y3, y4, y5, y6, y7
+        #capa8
+        x8 = (self.conv3_1(y7))
+        y8 =  (self.conv3_2(x8))
+        #capa9
+        x9 = (self.conv3_1(y8))
+        y9 =  (self.conv3_2(x9))
+        return y1, y2, y3, y4, y5, y6, y7, y8, y9
 
 def custom_loss(outputs, target):
     loss_tot = 0
