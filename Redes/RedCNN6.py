@@ -87,6 +87,9 @@ class HeatPropagationNet(nn.Module):
         # Bloque de salida
         self.conv3_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
+
+        #self.conv4_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
+        #self.conv4_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
         #self.dropout = nn.Dropout2d(p=0.01)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
 
     def forward(self, x):
@@ -98,27 +101,27 @@ class HeatPropagationNet(nn.Module):
         x2 = (self.conv1_1(y1))
         y2 =  (self.conv1_2(x2))
         #capa3
-        x3 = (self.conv1_1(y2))
-        y3 =  (self.conv1_2(x3))
+        x3 = (self.conv2_1(y2))
+        y3 =  (self.conv2_2(x3))
         #capa4
         x4 = (self.conv2_1(y3))
         y4 =  (self.conv2_2(x4))
         #capa5
-        x5 = (self.conv2_1(y4))
-        y5 =  (self.conv2_2(x5))
+        x5 = (self.conv3_1(y4))
+        y5 =  (self.conv3_2(x5))
         #capa6
-        x6 = (self.conv2_1(y5))
-        y6 =  (self.conv2_2(x6))
+        x6 = (self.conv3_1(y5))
+        y6 =  (self.conv3_2(x6))
         #capa7
-        x7 = (self.conv3_1(y6))
-        y7 =  (self.conv3_2(x7))
+        #x7 = (self.conv4_1(y6))
+        #y7 =  (self.conv4_2(x7))
         #capa8
-        x8 = (self.conv3_1(y7))
-        y8 =  (self.conv3_2(x8))
+        #x8 = (self.conv4_1(y7))
+        #y8 =  (self.conv4_2(x8))
         #capa9
-        x9 = (self.conv3_1(y8))
-        y9 =  (self.conv3_2(x9))
-        return y1, y2, y3, y4, y5, y6, y7, y8, y9
+        #x9 = (self.conv3_1(y8))
+        #y9 =  (self.conv3_2(x9))
+        return y1, y2, y3, y4, y5, y6, y7, y8
 
 def custom_loss(outputs, target):
     loss_tot = 0
@@ -159,7 +162,7 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
     optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
     # Bucle de entrenamiento y validación
-    for epoch in range(500):
+    for epoch in range(250):
         train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = 0.0, 0.0, 0.0, 0.0 
         num_batches_train, num_batches_val = 0, 0
         for inputs, labels in trainloader:
