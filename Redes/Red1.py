@@ -109,40 +109,48 @@ salida_esperada_tr = torch.tensor(salida_esperada_tr).float()
 salida_esperada_ts = torch.tensor(salida_esperada_ts).float()
 
 # Entrenar la red neuronal 
-net = NetMLP(16,500,1)
+net = NetMLP(16,20,1)
 net = net.to(device)
 optimizer = optim.Adam(net.parameters(), lr=0.0001)
 criterion =nn.MSELoss()
 loss_list = []
-for i in range(100000):
+epoch_loss_list = []  
+# Existing code
+for i in range(100):
     total_loss = 0.0
     for x, y in loader:
         optimizer.zero_grad()
         x = x.to(device)
         y = y.to(device)
-        loss =criterion(net(x),y)
-        # Realizo la pasada backward por la red        
+        loss = criterion(net(x), y)
         loss.backward()
-        
-        # Actualizo los pesos de la red con el optimizador
         optimizer.step()
 
         # Me guardo el valor actual de la función de pérdida para luego graficarlo
+        # (assuming loss_list is defined)
         loss_list.append(loss.data.item())
 
         # Acumulo la loss del minibatch
         total_loss += loss.item() * y.size(0)
 
     # Normalizo la loss total   
-    total_loss/= len(loader.dataset)
-
+    total_loss /= len(loader.dataset)
+    epoch_loss_list.append(total_loss)  # Append epoch loss to epoch_loss_list
 
     print('Epoch %d, loss = %g' % (i, total_loss))
+
+# Plotting the loss
+plt.figure(figsize=(10, 6))
+plt.plot(epoch_loss_list)
+plt.title('MSE a través de las epocas')
+plt.xlabel('Epocas')
+plt.ylabel('MSE')
+plt.show()
         
 plt.figure()
 loss_np_array = np.array(loss_list)
 plt.plot(loss_np_array, alpha = 0.3)
-N = 60
+N = 1000
 running_avg_loss = np.convolve(loss_np_array, np.ones((N,))/N, mode='valid')
 plt.plot(running_avg_loss, color='red')
 plt.title("Función de pérdida durante el entrenamiento")

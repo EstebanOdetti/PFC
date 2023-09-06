@@ -97,34 +97,41 @@ criterion = torch.nn.MSELoss()
 #print(len(loader))
 #print(len(loader.dataset))
 # Número de épocas
-num_epochs = 1000
-# Lista en la que iremos guardando el valor de la función de pérdida en cada 
-# etapa de entrenamiento
-loss_list = []
-# Bucle de entrenamiento
+num_epochs = 300
+loss_list = []  # Pérdida para cada lote
+epoch_loss_list = []  # Pérdida para cada época
+
 for i in range(num_epochs):
+    total_loss = 0.0  # Para calcular la pérdida promedio de la época
     for j in range(136):
         optimmizer.zero_grad()
         x = train_tensor[j]
         y = temp_train_tensor[j]
-
-        x = x.permute(2, 0, 1) # Reorder dimensions to (channels, height, width)
+        
+        x = x.permute(2, 0, 1)  # Reordenar dimensiones a (canales, altura, ancho)
 
         x = x.to(device)
         y = y.to(device)
-        #print(x.shape)
-        #print(y.shape)
-       
-        # Realizo la pasada forward por la red
-        loss = criterion(net(x.unsqueeze(0)), y) # Add batch dimension to x
-        # Realizo la pasada backward por la red        
-        loss.backward()
         
-        # Actualizo los pesos de la red con el optimizador
+        loss = criterion(net(x.unsqueeze(0)), y)  # Añadir dimensión de lote a x
+        loss.backward()
         optimmizer.step()
 
-        # Me guardo el valor actual de la función de pérdida para luego graficarlo
-        loss_list.append(loss.data.item())
-        # Muestro el valor de la función de pérdida
-        print('Epoch %d, loss = %g' % (i, loss))
-    
+        valor_perdida = loss.data.item()
+        loss_list.append(valor_perdida)
+        total_loss += valor_perdida  # Acumular la pérdida
+
+        print(f'Época {i}, Lote {j}, Pérdida = {valor_perdida}')
+
+    # Pérdida promedio para esta época
+    perdida_promedio = total_loss / 136
+    epoch_loss_list.append(perdida_promedio)
+    print(f'Época {i}, Pérdida Promedio = {perdida_promedio}')
+
+# Graficar la pérdida por época
+plt.figure(figsize=(10, 6))
+plt.plot(epoch_loss_list)
+plt.title('Pérdida por Época')
+plt.xlabel('Época')
+plt.ylabel('Pérdida')
+plt.show()

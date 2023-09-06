@@ -83,4 +83,3 @@ plt.plot(x_test.cpu().detach().numpy(), y_test.cpu().detach().numpy(), 'r', labe
 plt.plot(x_test.cpu().detach().numpy(), pred_test.cpu().detach().numpy(), 'b', label='PINN Solution')
 plt.legend()
 plt.show()
-

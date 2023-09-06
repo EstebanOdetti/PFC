@@ -76,9 +76,11 @@ test_dataset_dirichlet = TensorDataset(temp_test_tensor_dirichlet, temp_test_ten
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
+        
         # Bloque de entrada
         self.conv1_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv1_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
+        self.leaky_relu = nn.LeakyReLU(0.1)  # Añadir Leaky ReLU con una pendiente negativa de 0.01
 
         # Bloque intermedio
         self.conv2_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
@@ -88,41 +90,33 @@ class HeatPropagationNet(nn.Module):
         self.conv3_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
 
-        #self.conv4_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
-        #self.conv4_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
-        #self.dropout = nn.Dropout2d(p=0.01)  # Añade una capa de Dropout. 'p' es la probabilidad de que cada nodo se apague.
-
     def forward(self, x):
-        #capa1
-        x1 = (self.conv1_1(x))
-        #y1 = self.dropout(self.conv1_2(x1))
-        y1 = (self.conv1_2(x1))
-        #capa2
-        x2 = (self.conv1_1(y1))
-        y2 =  (self.conv1_2(x2))
-        #capa3
-        x3 = (self.conv2_1(y2))
-        y3 =  (self.conv2_2(x3))
-        #capa4
-        x4 = (self.conv2_1(y3))
-        y4 =  (self.conv2_2(x4))
-        #capa5
-        x5 = (self.conv3_1(y4))
-        y5 =  (self.conv3_2(x5))
-        #capa6
-        x6 = (self.conv3_1(y5))
-        y6 =  (self.conv3_2(x6))
-        #capa7
-        #x7 = (self.conv4_1(y6))
-        #y7 =  (self.conv4_2(x7))
-        #capa8
-        #x8 = (self.conv4_1(y7))
-        #y8 =  (self.conv4_2(x8))
-        #capa9
-        #x9 = (self.conv3_1(y8))
-        #y9 =  (self.conv3_2(x9))
+        # capa 1
+        x1 = self.leaky_relu(self.conv1_1(x))  
+        y1 = self.leaky_relu(self.conv1_2(x1))  
+        
+        # capa 2
+        x2 = self.leaky_relu(self.conv1_1(y1))
+        y2 = self.leaky_relu(self.conv1_2(x2))
+        
+        # capa 3
+        x3 = self.leaky_relu(self.conv2_1(y2))
+        y3 = self.leaky_relu(self.conv2_2(x3))
+        
+        # capa 4
+        x4 = self.leaky_relu(self.conv2_1(y3))
+        y4 = self.leaky_relu(self.conv2_2(x4))
+        
+        # capa 5
+        x5 = self.leaky_relu(self.conv3_1(y4))
+        y5 = self.leaky_relu(self.conv3_2(x5))
+        
+        # capa 6
+        x6 = self.leaky_relu(self.conv3_1(y5))
+        y6 = self.leaky_relu(self.conv3_2(x6))
+        
         return y1, y2, y3, y4, y5, y6
-
+    
 def custom_loss(outputs, target):
     loss_tot = 0
     
