@@ -169,9 +169,9 @@ for epoch in range(num_epochs):
 
 # Graficando los valores de pérdida
 plt.plot(loss_values)
-plt.xlabel('Epoch')
-plt.ylabel('Loss')
-plt.title('Loss over epochs')
+plt.xlabel('Epoca')
+plt.ylabel('Perdida')
+plt.title('Perdida por epoca')
 plt.grid(True)
 plt.show()
 
