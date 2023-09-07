@@ -134,21 +134,46 @@ test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=False)
 criterion = torch.nn.MSELoss()  # Por ejemplo, pérdida cuadrática media para problemas de regresión
 optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-# Entrenamiento
+import matplotlib.pyplot as plt
+
+# Inicializa una lista para almacenar los valores de pérdida de cada época
+loss_values = []
+
 for epoch in range(num_epochs):
     model.train()
+    epoch_loss = 0
+    batch_count = 0
     for batch in train_loader:
         # Extraer datos del lote
-        _, _, batch_y = batch.x, batch.edge_index, batch.y
-        data = Data(x=batch.x, edge_index=batch.edge_index, y=batch.y)
+        batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
+        data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y)
+        
         # Forward pass
         outputs = model(data)
         loss = criterion(outputs, batch_y)
+        
+        # Acumula el valor de la pérdida y cuenta los lotes
+        epoch_loss += loss.item()
+        batch_count += 1
+        
         # Backward pass y optimización
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}")
+    
+    # Almacena el promedio de la pérdida de la época
+    epoch_loss /= batch_count
+    loss_values.append(epoch_loss)
+    
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+
+# Graficando los valores de pérdida
+plt.plot(loss_values)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Loss over epochs')
+plt.grid(True)
+plt.show()
 
 # Evaluación
 model.eval()
