@@ -2,22 +2,17 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.autograd import grad
-import math
 import matplotlib.pyplot as plt
-import pandas as pd
-from sklearn.model_selection import train_test_split, GridSearchCV
 import scipy.io as sio
 import torch.nn.functional as F
 import numpy as np
 import matplotlib.pyplot as plt
-import os
 from torch.utils.data import TensorDataset, DataLoader
 from sklearn.metrics import mean_squared_error
 from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import r2_score
-import shutil 
 from sklearn.model_selection import KFold
 mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
@@ -43,26 +38,6 @@ temp_train_tensor = torch.from_numpy(temp_train).float()
 temp_test_tensor = torch.from_numpy(temp_test).float()
 temp_train_tensor_dirichlet = torch.from_numpy(temp_train_dirichlet).float()
 temp_test_tensor_dirichlet = torch.from_numpy(temp_test_dirichlet).float()
-#mostras los 10 primeros casos
-primeros_10_casos = temp_train_tensor_dirichlet[0:10]
-for i in range(10):
-    caso = primeros_10_casos[i]
-    imagen = caso[:, :]
-    plt.subplot(2, 5, i + 1)
-    plt.imshow(imagen, cmap='hot')  # Utilizar cmap='hot' para representar temperaturas
-    plt.title(f'Caso {i+1}')
-plt.tight_layout()
-plt.show()
-# Graficar los primeros 10 casos de solo borde
-#primeros_10_casos = temp_dirichlet_train_tensor[0:10]
-#for i in range(primeros_10_casos.shape[0]):
-#    caso = primeros_10_casos[i]
-#    imagen = caso  # No se necesita [:, :]
-#    plt.subplot(2, 5, i + 1)
-#    plt.imshow(imagen, cmap='hot')
-#    plt.title(f'Caso {i+1}')
-#plt.tight_layout()
-#plt.show()
 # Añadir una dimensión extra para los canales 
 temp_train_tensor = temp_train_tensor.unsqueeze(1)
 temp_test_tensor = temp_test_tensor.unsqueeze(1)
@@ -80,7 +55,7 @@ class HeatPropagationNet(nn.Module):
         # Bloque de entrada
         self.conv1_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv1_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
-        self.leaky_relu = nn.LeakyReLU(0.1)  # Añadir Leaky ReLU con una pendiente negativa de 0.01
+        self.leaky_relu = nn.LeakyReLU(0.5)  # Añadir Leaky ReLU con una pendiente negativa de 0.1
 
         # Bloque intermedio
         self.conv2_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
@@ -261,7 +236,7 @@ ground_truth = labels[:, 0].cpu().numpy().flatten()
 red_output = outputs[-1][:, 0].cpu().numpy().flatten()
 
 # Graficar los puntos del ground truth en rojo
-plt.scatter(red_output, ground_truth, c='red', label='Ground Truth')
+plt.scatter(ground_truth, red_output, c='red', label='Ground Truth')
 
 # Graficar los puntos de la salida de la red en azul
 plt.scatter(red_output, red_output, c='blue', label='Salida de la red')
@@ -278,3 +253,11 @@ plt.legend()
 
 # Mostrar la gráfica
 plt.show()
+from tensorboardX import SummaryWriter
+# Asegúrate de que tanto el modelo como el tensor de entrada estén en el mismo dispositivo (por ejemplo, CPU)
+device = torch.device("cpu")
+model.to(device)
+input_tensor = torch.randn(1, 1, 64, 64).to(device)
+
+# Ahora, puedes agregar tu modelo al escritor de resumen
+writer.add_graph(model, input_to_model=input_tensor)
