@@ -23,6 +23,7 @@ from sklearn.neighbors import KNeighborsClassifier
 import time
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, classification_report, r2_score
+from torchviz import make_dot
 
 datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_ver_3.csv')
 
@@ -60,29 +61,37 @@ salida_esperada_ts = scaler.transform(salida_esperada_ts.reshape(-1, 1))
 
 
 #Tal cual hacemos en clase, definimos un MPL. 
-class NetMLP(torch.nn.Module):
+class NetMLP(nn.Module):
     def __init__(self, input_features, size_hidden, n_output):
         super(NetMLP, self).__init__()
-        self.hidden1 = nn.Linear(input_features, size_hidden)
-        self.hidden2 = nn.Linear(size_hidden, size_hidden)
-        self.hidden3 = nn.Linear(size_hidden, size_hidden)
-        self.hidden4 = nn.Linear(size_hidden, size_hidden)
-        self.hidden5 = nn.Linear(size_hidden, size_hidden)
-        self.hidden6 = nn.Linear(size_hidden, size_hidden)
-        self.hidden7 = nn.Linear(size_hidden, size_hidden)
-        self.out = nn.Linear(size_hidden, n_output)
+
+        # Input layer
+        self.input_layer = nn.Linear(input_features, size_hidden)
+
+        # Hidden layers
+        self.hidden_layer_1 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_2 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_3 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_4 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_5 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_6 = nn.Linear(size_hidden, size_hidden)
+        self.hidden_layer_7 = nn.Linear(size_hidden, size_hidden)
+
+        # Output layer
+        self.output_layer = nn.Linear(size_hidden, n_output)
 
     def forward(self, x):
-        x = F.tanh(self.hidden1(x))
-        x = F.tanh(self.hidden2(x))
-        x = F.tanh(self.hidden3(x))
-        x = F.tanh(self.hidden4(x))
-        x = F.tanh(self.hidden5(x))
-        x = F.tanh(self.hidden6(x))
-        x = F.tanh(self.hidden7(x))
-        x = self.out(x)        
+        x = F.tanh(self.input_layer(x))
+        x = F.tanh(self.hidden_layer_1(x))
+        x = F.tanh(self.hidden_layer_2(x))
+        x = F.tanh(self.hidden_layer_3(x))
+        x = F.tanh(self.hidden_layer_4(x))
+        x = F.tanh(self.hidden_layer_5(x))
+        x = F.tanh(self.hidden_layer_6(x))
+        x = F.tanh(self.hidden_layer_7(x))
+        x = self.output_layer(x)
         return x
-    
+
 # clfRFR = RandomForestRegressor(n_estimators=1000, n_jobs=-1, random_state=0)
 # CV_RFR = cross_val_score(clfRFR, datos_tr, salida_esperada_tr, cv=5, scoring='r2')
 # clfRFR.fit(datos_tr, salida_esperada_tr)
@@ -116,7 +125,7 @@ criterion =nn.MSELoss()
 loss_list = []
 epoch_loss_list = []  
 # Existing code
-for i in range(100):
+for i in range(10):
     total_loss = 0.0
     for x, y in loader:
         optimizer.zero_grad()
@@ -159,6 +168,7 @@ plt.show()
 # Definimos un método para mostrar las predicciones como un scatter plot 
 # y graficamos la recta de regresión para esos datos.
 def plotScatter(x_data, y_data, title, fit_line=True):
+    x_data = x_data.squeeze() 
     plt.figure()
 
     plt.plot(x_data, y_data, '+')
@@ -184,3 +194,11 @@ plotScatter(salida_esperada_ts, y_pred_test, "Test data")
 
 print ("MSE medio en training: " + str(((salida_esperada_tr - y_pred_train)**2).mean()))
 print ("MSE medio en test: " + str(((salida_esperada_ts - y_pred_test)**2).mean()))
+
+print(net)
+
+# Crea una entrada de ejemplo
+input_example = torch.rand(1, 16).to(device)
+
+# Considerando que tienes un modelo llamado `model` y una entrada de ejemplo llamada `input_example`
+torch.onnx.export(net, input_example, 'model.onnx')
