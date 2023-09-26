@@ -4,11 +4,12 @@ import numpy as np
 import scipy.io as sio
 import networkx as nx
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, SAGEConv, ChebConv, GraphConv, ResGatedGraphConv, TAGConv, ARMAConv, ClusterGCNConv, GeneralConv, HGTConv
 from torch_geometric.data import DataLoader
 import torch.optim as optim
 import matplotlib.pyplot as plt
 from itertools import product
+import torch.nn as nn
 
 # Cargar la matriz
 mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
@@ -25,7 +26,7 @@ porcentaje_entrenamiento = 0.7
 num_entrenamiento = int(total_casos * porcentaje_entrenamiento)
 
 # Subseleccionar los canales 1, 2 y 15
-selected_channels = [0, 1, 4, 5, 12, 17]  # indices empezando desde 0
+selected_channels = [0, 1, 12, 17]  # indices empezando desde 0
 train_data_selected = matriz_cargada_mezclada[:num_entrenamiento, :, :, selected_channels]
 test_data_selected = matriz_cargada_mezclada[num_entrenamiento:, :, :, selected_channels]
 
@@ -53,7 +54,7 @@ for i, (x, y) in enumerate(product(range(7), range(7))):
 pos = {i: (G.nodes[i]['features'][0], G.nodes[i]['features'][1]) for i in G.nodes}
 
 # Dibuja el grafo, con colores de nodo basados en el valor de una de las características
-colors = [G.nodes[i]['features'][5] for i in G.nodes]  # Usa la quinta característica para el color (temperatura)
+colors = [G.nodes[i]['features'][3] for i in G.nodes]  # Usa la quinta característica para el color (temperatura)
 
 temp_train_dirichlet = matriz_cargada_mezclada[:num_entrenamiento, :, :, 12]
 temp_test_dirichlet = matriz_cargada_mezclada[num_entrenamiento:, :, :, 12]
@@ -68,36 +69,43 @@ temp_test_tensor_dirichlet = torch.from_numpy(temp_test_dirichlet).float()
 #mostras los 10 primeros casos
 primer_caso = temp_train_tensor_dirichlet[0]
 # Gráfico de NetworkX
+# 1. Define vmin y vmax
+vmin = min(colors)
+vmax = max(colors)
+
 plt.figure(figsize=(12, 6))
 
 # Suponiendo que "colors" es una lista de los valores de temperatura de cada nodo
 label_dict = {i: f'{val:.2f}' for i, val in enumerate(colors)}
-plt.subplot(1, 2, 1)
-nx.draw(G, pos, node_color=colors, cmap=plt.cm.Reds)
-nx.draw_networkx_labels(G, pos, labels=label_dict, font_size=8, verticalalignment='bottom')
-plt.title('Graph Representation')
 
-# Mostrar el primer caso
+plt.subplot(1, 2, 1)
+# Usa vmin y vmax en la visualización del grafo
+nx.draw(G, pos, node_color=colors, cmap=plt.cm.Reds, vmin=vmin, vmax=vmax)
+nx.draw_networkx_labels(G, pos, labels=label_dict, font_size=8, verticalalignment='bottom')
+plt.title('Grafo de temperatura')
+
 plt.subplot(1, 2, 2)
 primer_caso = temp_train_tensor[0]
 imagen = primer_caso[:, :]
-plt.imshow(imagen, cmap='hot')  # Utilizar cmap='hot' para representar temperaturas
-plt.title(f'Caso 1')
+# Usa vmin y vmax también en la visualización de la imagen
+plt.imshow(imagen, cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
+plt.title(f'Caso 1 del dataset')
 
 plt.tight_layout()
+plt.colorbar()  # Opcional: Agregar una barra de colores para indicar la escala
 plt.show()
 
 # Asegurarse de usar los canales seleccionados
 train_data_selected_tensor = torch.from_numpy(train_data_selected).float()
 test_data_selected_tensor = torch.from_numpy(test_data_selected).float()
 
-# Aplanar las matrices 7x7 a vectores 49x6 (porque ahora hay 6 canales)
-train_x = train_data_selected_tensor.reshape(-1, 49, 6)
-test_x = test_data_selected_tensor.reshape(-1, 49, 6)
+# Aplanar las matrices 7x7 a vectores 49x6 (porque ahora hay 5 canales)
+train_x = train_data_selected_tensor[:, :, :, 0:3].reshape(-1, 49, 3)
+test_x = test_data_selected_tensor[:, :, :, 0:3].reshape(-1, 49, 3)
 
 # Obtén el canal 17 (índice 5 en selected_channels) de tus datos seleccionados
-train_y = train_data_selected_tensor[:, :, :, 5].reshape(-1, 49)
-test_y = test_data_selected_tensor[:, :, :, 5].reshape(-1, 49)
+train_y = train_data_selected_tensor[:, :, :, 3].reshape(-1, 49)
+test_y = test_data_selected_tensor[:, :, :, 3].reshape(-1, 49)
 
 # Crear una lista de Data objects para entrenamiento y prueba
 train_data_list = [Data(x=train_x[i], edge_index=edge_index, y=train_y[i]) for i in range(train_x.shape[0])]
@@ -107,24 +115,40 @@ test_data_list = [Data(x=test_x[i], edge_index=edge_index, y=test_y[i]) for i in
 class GraphNetwork(torch.nn.Module):
     def __init__(self):
         super(GraphNetwork, self).__init__()
-        self.conv1 = GCNConv(6, 16)  # 6 características de entrada, 16 características de salida
-        self.conv2 = GCNConv(16, 1)  # 16 características de entrada, 1 característica de salida (temperatura)
+        self.conv1 = ClusterGCNConv(3, 16)
+        self.conv2 = ClusterGCNConv(16, 16)
+        self.conv3 = ClusterGCNConv(16, 32)
+        self.conv4 = ClusterGCNConv(32, 64)
+        self.conv5 = ClusterGCNConv(64, 64)
+        self.conv6 = ClusterGCNConv(64, 32)
+        self.conv7 = ClusterGCNConv(32, 16) 
+        self.conv8 = ClusterGCNConv(16, 1)
 
-    def forward(self, data):
-        x, edge_index = data.x, data.edge_index
-
+    def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
-        #x = F.dropout(x, training=self.training)
+        x = F.leaky_relu(x, 0.1)
         x = self.conv2(x, edge_index)
-        x = F.leaky_relu(x)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv3(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv4(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv5(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv6(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv7(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
+        x = self.conv8(x, edge_index)
+        x = F.leaky_relu(x, 0.1)
         return x.view(-1)
 
 model = GraphNetwork()
 
 # Parámetros
-batch_size = 32
-learning_rate = 0.01
-num_epochs = 100
+batch_size = 64
+learning_rate = 0.0001
+num_epochs = 200
 
 # DataLoaders
 train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
@@ -132,7 +156,7 @@ test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=False)
 
 # Función de pérdida y optimizador
 criterion = torch.nn.MSELoss()  # Por ejemplo, pérdida cuadrática media para problemas de regresión
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+optimizer = optim.SGD(model.parameters(), lr=learning_rate)
 
 import matplotlib.pyplot as plt
 
@@ -146,10 +170,9 @@ for epoch in range(num_epochs):
     for batch in train_loader:
         # Extraer datos del lote
         batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
-        data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y)
         
         # Forward pass
-        outputs = model(data)
+        outputs = model(batch_x, batch_edge_index)
         loss = criterion(outputs, batch_y)
         
         # Acumula el valor de la pérdida y cuenta los lotes
@@ -182,10 +205,9 @@ with torch.no_grad():
     predictions = [] # Almacenaremos todas las predicciones aquí
     for batch in test_loader:
         # Extraer datos del lote
-        _, _, batch_y = batch.x, batch.edge_index, batch.y
-        data = Data(x=batch.x, edge_index=batch.edge_index, y=batch.y)
+        batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y        
         # Forward pass
-        outputs = model(data)
+        outputs = model(batch_x, batch_edge_index)
         predictions.append(outputs)  # Guardar las predicciones de este lote
         loss = criterion(outputs, batch_y)
         total_loss += loss.item() * batch.num_graphs
@@ -195,24 +217,24 @@ with torch.no_grad():
 # Convertir la lista de tensores de predicciones en un único tensor
 predictions_tensor = torch.cat(predictions).reshape(-1, 7, 7)  # Asumiendo que tus datos son 7x7
 
-# Dibujar el ground truth y las predicciones para los primeros N casos de prueba
 N = 10
+# Configura una figura grande
+plt.figure(figsize=(24, 5*N))
+
 for i in range(min(N, len(test_data_list))):
-    plt.figure(figsize=(12, 5))
-    
     # Dibujar el ground truth
-    plt.subplot(1, 2, 1)
+    plt.subplot(N, 2, 2*i + 1)  # Esta línea se ha modificado para adaptarse al nuevo diseño
     ground_truth = test_y[i].reshape(7, 7).numpy()  # Convertir de tensor a numpy para plotear
     plt.imshow(ground_truth, cmap='hot')
     plt.title(f'Caso {i+1} - Ground Truth')
     plt.colorbar()
     
     # Dibujar la predicción
-    plt.subplot(1, 2, 2)
+    plt.subplot(N, 2, 2*i + 2)  # Esta línea se ha modificado para adaptarse al nuevo diseño
     prediction = predictions_tensor[i].numpy()  # Convertir de tensor a numpy para plotear
     plt.imshow(prediction, cmap='hot')
     plt.title(f'Caso {i+1} - Predicción')
     plt.colorbar()
 
-    plt.tight_layout()
-    plt.show()
+plt.tight_layout()
+plt.show()

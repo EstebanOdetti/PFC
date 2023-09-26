@@ -24,6 +24,7 @@ import time
 from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix, accuracy_score, recall_score, classification_report, r2_score
 from torchviz import make_dot
+from collections import OrderedDict
 
 datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_ver_3.csv')
 
@@ -60,37 +61,40 @@ scaler = scaler.fit(salida_esperada_ts.reshape(-1, 1))
 salida_esperada_ts = scaler.transform(salida_esperada_ts.reshape(-1, 1))
 
 
-#Tal cual hacemos en clase, definimos un MPL. 
 class NetMLP(nn.Module):
     def __init__(self, input_features, size_hidden, n_output):
         super(NetMLP, self).__init__()
 
-        # Input layer
-        self.input_layer = nn.Linear(input_features, size_hidden)
-
-        # Hidden layers
-        self.hidden_layer_1 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_2 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_3 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_4 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_5 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_6 = nn.Linear(size_hidden, size_hidden)
-        self.hidden_layer_7 = nn.Linear(size_hidden, size_hidden)
-
-        # Output layer
-        self.output_layer = nn.Linear(size_hidden, n_output)
+        self.network = nn.Sequential(OrderedDict([
+            ('input_layer', nn.Linear(input_features, size_hidden)),
+            ('input_activation', nn.Tanh()),
+            
+            ('hidden_layer_1', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_1', nn.Tanh()),
+            
+            ('hidden_layer_2', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_2', nn.Tanh()),
+            
+            ('hidden_layer_3', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_3', nn.Tanh()),
+            
+            ('hidden_layer_4', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_4', nn.Tanh()),
+            
+            ('hidden_layer_5', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_5', nn.Tanh()),
+            
+            ('hidden_layer_6', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_6', nn.Tanh()),
+            
+            ('hidden_layer_7', nn.Linear(size_hidden, size_hidden)),
+            ('hidden_activation_7', nn.Tanh()),
+            
+            ('output_layer', nn.Linear(size_hidden, n_output))
+        ]))
 
     def forward(self, x):
-        x = F.tanh(self.input_layer(x))
-        x = F.tanh(self.hidden_layer_1(x))
-        x = F.tanh(self.hidden_layer_2(x))
-        x = F.tanh(self.hidden_layer_3(x))
-        x = F.tanh(self.hidden_layer_4(x))
-        x = F.tanh(self.hidden_layer_5(x))
-        x = F.tanh(self.hidden_layer_6(x))
-        x = F.tanh(self.hidden_layer_7(x))
-        x = self.output_layer(x)
-        return x
+        return self.network(x)
 
 # clfRFR = RandomForestRegressor(n_estimators=1000, n_jobs=-1, random_state=0)
 # CV_RFR = cross_val_score(clfRFR, datos_tr, salida_esperada_tr, cv=5, scoring='r2')
@@ -125,7 +129,7 @@ criterion =nn.MSELoss()
 loss_list = []
 epoch_loss_list = []  
 # Existing code
-for i in range(10):
+for i in range(200):
     total_loss = 0.0
     for x, y in loader:
         optimizer.zero_grad()
@@ -136,7 +140,6 @@ for i in range(10):
         optimizer.step()
 
         # Me guardo el valor actual de la función de pérdida para luego graficarlo
-        # (assuming loss_list is defined)
         loss_list.append(loss.data.item())
 
         # Acumulo la loss del minibatch
@@ -197,8 +200,7 @@ print ("MSE medio en test: " + str(((salida_esperada_ts - y_pred_test)**2).mean(
 
 print(net)
 
-# Crea una entrada de ejemplo
-input_example = torch.rand(1, 16).to(device)
+input_example = datos_ts[0].unsqueeze(0).to(device)
 
 # Considerando que tienes un modelo llamado `model` y una entrada de ejemplo llamada `input_example`
-torch.onnx.export(net, input_example, 'model.onnx')
+torch.onnx.export(net, input_example, 'model_MLP_1.onnx',input_names=['input'], output_names=['output'])

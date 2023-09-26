@@ -14,7 +14,7 @@ import os
 from torch.utils.data import TensorDataset, DataLoader
 
 print(os.getcwd())
-mat_fname = 'Datasets/mi_matriz.mat'
+mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 
@@ -33,21 +33,23 @@ test_tensor = torch.from_numpy(test).float()
 temp_train_tensor = torch.from_numpy(temp_train).float()
 temp_test_tensor = torch.from_numpy(temp_test).float()
 
+primeros_10_casos = temp_train_tensor[0:10]
+for i in range(10):
+    caso = primeros_10_casos[i]
+    imagen = caso[:, :]
+    plt.subplot(2, 5, i + 1)
+    im = plt.imshow(caso, cmap='hot', origin='lower')  # Utilizar cmap='hot' para representar temperaturas
+    plt.title(f'Caso {i+1}')
 
+# Ajusta el layout para dejar espacio para la barra de color
+plt.tight_layout(rect=[0, 0, 0.9, 1])
 
-#primeros_10_casos = temp_train[:10]
-#intento de dibujo; NOSE SI ESTA BIEN
-# for i in range(10):
-#     caso = primeros_10_casos[i]
-#     imagen = caso[:, :]  
-#     plt.subplot(2, 5, i + 1)  
-#     plt.imshow(imagen, cmap='gray')  
-#     plt.axis('off')  
-#     plt.title(f'Caso {i+1}')  
-# plt.tight_layout()
-# plt.show()  
+# Agrega una barra de color a la derecha de los subgráficos
+cbar_ax = plt.gcf().add_axes([0.92, 0.15, 0.02, 0.7])
+cbar = plt.colorbar(im, cax=cbar_ax)
+cbar.set_label('Temperatura', rotation=270, labelpad=15)  # Agrega una etiqueta a la barra de color
 
-
+plt.show()
 class CNN(nn.Module):
     def __init__(self):
         super(CNN, self).__init__()  
@@ -76,28 +78,8 @@ learning_rate = 0.0001
 optimmizer=torch.optim.Adam(net.parameters(),lr=learning_rate)
 # Definimos también la función de pérdida a utilizar
 criterion = torch.nn.MSELoss() 
-# Creamos un loader iterable indicandole que debe leer los datos a partir de
-# del dataset creado en el paso anterior. Este objeto puede ser iterado
-##Pero para nuestro caso tenemos que definir el dataset
-#class CustomDataset(Dataset):
- #   def __init__(self, data):
-  #      self.data = data
-        
-   # def __getitem__(self, index):
-    #    x = torch.from_numpy(self.data[index, :,:,0:16])
-     #   y = torch.from_numpy(self.data[index, :,:,17])
-      #  return x.to(device), y.to(device) 
-   
-    #def __len__(self):
-     #   return self.data.shape
-
-#device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-#loader = CustomDataset(train)
-#loader = DataLoader(dataset=train, batch_size=6, shuffle=True)
-#print(len(loader))
-#print(len(loader.dataset))
 # Número de épocas
-num_epochs = 300
+num_epochs = 100
 loss_list = []  # Pérdida para cada lote
 epoch_loss_list = []  # Pérdida para cada época
 
@@ -134,4 +116,65 @@ plt.plot(epoch_loss_list)
 plt.title('Pérdida por Época')
 plt.xlabel('Época')
 plt.ylabel('Pérdida')
+plt.show()
+# Cambiamos el modelo a modo de evaluación
+net.eval()
+
+# Lista para almacenar las predicciones
+predictions = []
+
+# Deshabilitamos la computación del gradiente
+with torch.no_grad():
+    total_loss = 0.0
+    num_samples = 0
+    for j in range(len(test_tensor)):
+        x_test = test_tensor[j]
+        y_test = temp_test_tensor[j]
+        
+        x_test = x_test.permute(2, 0, 1)  # Reordenar dimensiones a (canales, altura, ancho)
+        x_test = x_test.to(device)
+        y_test = y_test.to(device)
+        
+        # Realizar predicción
+        output = net(x_test.unsqueeze(0))
+        predictions.append(output.squeeze().cpu().numpy())    
+            
+        # Calcular y acumular la pérdida para esta muestra
+        loss = criterion(output.squeeze(), y_test)
+        total_loss += loss.item()
+        num_samples += 1
+
+# Calcular la pérdida media
+mean_loss = total_loss / num_samples
+print(f'Pérdida media en el conjunto de test = {mean_loss}')
+
+
+# Convertir las predicciones a un tensor para facilitar el cálculo del error
+predictions_tensor = torch.tensor(predictions)
+
+import matplotlib.pyplot as plt
+import torch  # Si estás utilizando PyTorch
+
+# Suponiendo que temp_train_tensor y predictions_tensor son tensores de PyTorch
+primeros_10_casos = temp_train_tensor[0:10]
+primeras_10_predicciones = predictions_tensor[0:10]
+
+plt.figure(figsize=(15, 10))  # Ajusta el tamaño de la figura para que se vean mejor las imágenes
+
+for i in range(10):
+    # Ground Truth
+    caso = primeros_10_casos[i]
+    imagen_caso = caso.numpy() if isinstance(caso, torch.Tensor) else caso
+    plt.subplot(10, 2, 2*i + 1)
+    im = plt.imshow(imagen_caso, cmap='hot', origin='lower')
+    plt.title(f'Caso {i+1} - Ground Truth')
+    
+    # Predicción
+    prediccion = primeras_10_predicciones[i]
+    imagen_prediccion = prediccion.numpy() if isinstance(prediccion, torch.Tensor) else prediccion
+    plt.subplot(10, 2, 2*i + 2)
+    plt.imshow(imagen_prediccion, cmap='hot', origin='lower')
+    plt.title(f'Caso {i+1} - Predicción')
+
+# Ajusta el layout para dejar espacio para la barra de color
 plt.show()

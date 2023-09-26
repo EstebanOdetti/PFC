@@ -4,7 +4,7 @@ import numpy as np
 import scipy.io as sio
 import networkx as nx
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv
+from torch_geometric.nn import GCNConv, ClusterGCNConv
 from torch_geometric.data import DataLoader
 import torch.optim as optim
 import matplotlib.pyplot as plt
@@ -12,6 +12,9 @@ from itertools import product
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
+import time
+from torch_geometric.data import Batch
+import matplotlib.pyplot as plt
 
 # Cargar la matriz
 mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
@@ -27,8 +30,7 @@ total_casos = matriz_cargada_mezclada.shape[0]
 porcentaje_entrenamiento = 0.7
 num_entrenamiento = int(total_casos * porcentaje_entrenamiento)
 
-# Subseleccionar los canales 1, 2 y 15
-selected_channels = [0, 1, 4, 5, 12, 17]  # indices empezando desde 0
+selected_channels = [0, 1, 12, 17]  # indices empezando desde 0
 train_data_selected = matriz_cargada_mezclada[:num_entrenamiento, :, :, selected_channels]
 test_data_selected = matriz_cargada_mezclada[num_entrenamiento:, :, :, selected_channels]
 
@@ -47,7 +49,7 @@ G = nx.relabel_nodes(G, node_mapping)
 
 # Construir edge_index
 edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous()
-
+print(edge_index)
 # Añade estas características a los nodos en tu grafo
 for i, (x, y) in enumerate(product(range(7), range(7))):
     G.nodes[i]['features'] = node_features[x, y]
@@ -56,7 +58,7 @@ for i, (x, y) in enumerate(product(range(7), range(7))):
 pos = {i: (G.nodes[i]['features'][0], G.nodes[i]['features'][1]) for i in G.nodes}
 
 # Dibuja el grafo, con colores de nodo basados en el valor de una de las características
-colors = [G.nodes[i]['features'][5] for i in G.nodes]  # Usa la quinta característica para el color (temperatura)
+colors = [G.nodes[i]['features'][2] for i in G.nodes]  # Usa la quinta característica para el color (temperatura)
 
 temp_train_dirichlet = matriz_cargada_mezclada[:num_entrenamiento, :, :, 12]
 temp_test_dirichlet = matriz_cargada_mezclada[num_entrenamiento:, :, :, 12]
@@ -84,7 +86,7 @@ plt.title('Graph Representation')
 plt.subplot(1, 2, 2)
 primer_caso = temp_train_tensor[0]
 imagen = primer_caso[:, :]
-plt.imshow(imagen, cmap='hot')  # Utilizar cmap='hot' para representar temperaturas
+plt.imshow(imagen, cmap='hot', origin='lower')  # Utilizar cmap='hot' para representar temperaturas
 plt.title(f'Caso 1')
 
 plt.tight_layout()
@@ -94,128 +96,147 @@ plt.show()
 train_data_selected_tensor = torch.from_numpy(train_data_selected).float()
 test_data_selected_tensor = torch.from_numpy(test_data_selected).float()
 
-# Aplanar las matrices 7x7 a vectores 49x6 (porque ahora hay 6 canales)
-train_x = train_data_selected_tensor.reshape(-1, 49, 6)
-test_x = test_data_selected_tensor.reshape(-1, 49, 6)
 
-# Obtén el canal 17 (índice 5 en selected_channels) de tus datos seleccionados
-train_y = train_data_selected_tensor[:, :, :, 5].reshape(-1, 49)
-test_y = test_data_selected_tensor[:, :, :, 5].reshape(-1, 49)
+# Función para transformar el tensor seleccionado en una lista de objetos Data
+def tensor_to_data_list(data_tensor):
+    data_list = []
+    
+    for sample in range(data_tensor.shape[0]):
+        # Obtener características del nodo y valor objetivo para cada nodo
+        x = data_tensor[sample, :, :, :-1].reshape(49, -1)  # Excluimos el último canal para x
+        y = data_tensor[sample, :, :, -1].reshape(49)  # Usamos el último canal para y
 
-# Crear una lista de Data objects para entrenamiento y prueba
-train_data_list = [Data(x=train_x[i], edge_index=edge_index, y=train_y[i]) for i in range(train_x.shape[0])]
-test_data_list = [Data(x=test_x[i], edge_index=edge_index, y=test_y[i]) for i in range(test_x.shape[0])]
+        data = Data(x=x, edge_index=edge_index.clone(), y=y)
+        data_list.append(data)
+    
+    return data_list
+
+# Convertir tensores seleccionados en listas de objetos Data
+train_data_list = tensor_to_data_list(train_data_selected_tensor)
+test_data_list = tensor_to_data_list(test_data_selected_tensor)
 
 # Definir el modelo de red
 class GraphNetwork(torch.nn.Module):
     def __init__(self):
         super(GraphNetwork, self).__init__()
         
-        # Bloque de entrada
-        self.conv1_1 = GCNConv(6, 16)  # La primera capa toma 6 características y devuelve 16
-        self.conv1_2 = GCNConv(16, 1)  # La segunda capa toma 16 características y devuelve 1
+        # Entry block
+        self.conv1_1 = ClusterGCNConv(3, 16)
+        self.conv1_2 = ClusterGCNConv(16, 1)
         
-        # Bloque intermedio
-        self.conv2_1 = GCNConv(1, 16)  # La primera capa toma 1 característica y devuelve 16
-        self.conv2_2 = GCNConv(16, 1)  # La segunda capa toma 16 características y devuelve 1
-
-        # Bloque de salida
-        self.conv3_1 = GCNConv(1, 16)  # La primera capa toma 1 característica y devuelve 16
-        self.conv3_2 = GCNConv(16, 1)  # La segunda capa toma 16 características y devuelve 1
+        # Intermediate blocks
+        self.conv2_1 = ClusterGCNConv(1, 16)
+        self.conv2_2 = ClusterGCNConv(16, 1)
         
-        self.leaky_relu = nn.LeakyReLU(0.1)  # Añadir Leaky ReLU con una pendiente negativa de 0.1
+        self.conv3_1 = ClusterGCNConv(1, 16)
+        self.conv3_2 = ClusterGCNConv(16, 1)
+        
+        # Exit block
+        self.conv4_1 = ClusterGCNConv(1, 16)
+        self.conv4_2 = ClusterGCNConv(16, 1)
+        
+        self.leaky_relu = nn.LeakyReLU(0.2)  # Leaky ReLU with a negative slope of 0.2
 
     def forward(self, data):
         x, edge_index = data.x, data.edge_index
-
-        # capa 1
-        x1 = self.leaky_relu(self.conv1_1(x, edge_index))  
-        y1 = self.leaky_relu(self.conv1_2(x1, edge_index))  
         
-        # capa 2
-        x2 = self.leaky_relu(self.conv1_1(y1, edge_index))  
-        y2 = self.leaky_relu(self.conv1_2(x2, edge_index))  
-
-        # capa 3
-        x3 = self.leaky_relu(self.conv2_1(y2, edge_index))  
-        y3 = self.leaky_relu(self.conv2_2(x3, edge_index))  
-
-        # capa 4
-        x4 = self.leaky_relu(self.conv2_1(y3, edge_index))  
-        y4 = self.leaky_relu(self.conv2_2(x4, edge_index))  
-
-        # capa 5
-        x5 = self.leaky_relu(self.conv3_1(y4, edge_index))  
-        y5 = self.leaky_relu(self.conv3_2(x5, edge_index))  
-
-        # capa 6
-        x6 = self.leaky_relu(self.conv3_1(y5, edge_index))  
-        y6 = self.leaky_relu(self.conv3_2(x6, edge_index))  
-
-        return y1, y2, y3, y4, y5, y6
+        # Entry block
+        x1 = self.leaky_relu(self.conv1_1(x, edge_index))
+        y1 = self.leaky_relu(self.conv1_2(x1, edge_index))
+        
+        # Intermediate blocks
+        x2 = self.leaky_relu(self.conv2_1(y1, edge_index))
+        y2 = self.leaky_relu(self.conv2_2(x2, edge_index))
+        
+        x3 = self.leaky_relu(self.conv3_1(y2, edge_index))
+        y3 = self.leaky_relu(self.conv3_2(x3, edge_index))
+        
+        # Exit block
+        x4 = self.leaky_relu(self.conv4_1(y3, edge_index))
+        y4 = self.leaky_relu(self.conv4_2(x4, edge_index))
+        
+        return y1.view(-1), y2.view(-1), y3.view(-1), y4.view(-1)
 
 model = GraphNetwork()
 
-# Parámetros
-batch_size = 32
-learning_rate = 0.01
-num_epochs = 100
-
-# DataLoaders
-train_loader = DataLoader(train_data_list, batch_size=batch_size, shuffle=True)
-test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=False)
-
-# Función de pérdida y optimizador
-criterion = torch.nn.MSELoss()  # Por ejemplo, pérdida cuadrática media para problemas de regresión
 # Verifica si CUDA está disponible y selecciona el dispositivo
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
-# Inicializar la red y el optimizador
-model = model.to(device)
-optimizer = optim.Adam(model.parameters(), lr=learning_rate)
-
-# Inicializa una lista para almacenar los valores de pérdida de cada época
-loss_values = []
-
+print(device)
 def custom_loss(outputs, target):
     loss_tot = 0
     
     for output in outputs:  # Recorre todas las salidas de capa
-        loss_tot += F.mse_loss(output, target)
+        loss_tot += F.mse_loss(output.squeeze(), target)
 
     return loss_tot
-for epoch in range(num_epochs):
-    model.train()
-    epoch_loss = 0
-    batch_count = 0
-    for batch in train_loader:
-        # Extraer datos del lote
-        batch_x, batch_edge_index, batch_y = batch.x.to(device), batch.edge_index.to(device), batch.y.to(device)
-        data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y).to(device)
-        # Forward pass
-        outputs = model(data)
-        outputs_all = outputs[:-1]
-        output_final = outputs[-1:]
-        
-        # Calcular la pérdida utilizando tu función custom_loss
-        loss_all = custom_loss(outputs_all, batch_y)
-        loss_final = F.mse_loss(output_final[-1], batch_y)
-        
-        # Acumula el valor de la pérdida y cuenta los lotes
-        epoch_loss += loss_all.item() + loss_final.item()
-        batch_count += 1
-        
-        # Backward pass y optimización
-        optimizer.zero_grad()
-        loss_all.backward()
-        optimizer.step()
+
+from sklearn.model_selection import KFold
+
+# Parámetros
+batch_size = 64
+learning_rate = 0.0001
+num_epochs = 500
+k_folds = 2
+
+# Usando KFold de sklearn
+kfold = KFold(n_splits=k_folds, shuffle=True)
+
+# Lista para almacenar pérdidas por cada fold
+loss_values_kfold = []
+# Inicializar la red y el optimizador para cada fold
+model = model.to(device)  # Reemplaza con una nueva instancia de tu modelo si se modifica durante el entrenamiento
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+for fold, (train_ids, test_ids) in enumerate(kfold.split(train_data_list)):
+    print(f"FOLD {fold+1}/{k_folds}")
     
-    # Almacena el promedio de la pérdida de la época
-    epoch_loss /= batch_count
-    loss_values.append(epoch_loss)
+    # Divide los datos en entrenamiento y validación para este fold
+    train_subsampler = torch.utils.data.SubsetRandomSampler(train_ids)
+    test_subsampler = torch.utils.data.SubsetRandomSampler(test_ids)
     
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+    train_loader = DataLoader(train_data_list, batch_size=batch_size, sampler=train_subsampler)
+    test_loader = DataLoader(train_data_list, batch_size=batch_size, sampler=test_subsampler)
+        
+    # Inicializa una lista para almacenar los valores de pérdida de cada época
+    loss_values = []
     
+    for epoch in range(num_epochs):
+        model.train()
+        epoch_loss = 0
+        batch_count = 0
+        for batch in train_loader:
+            # Extraer datos del lote
+            batch_x, batch_edge_index, batch_y = batch.x.to(device), batch.edge_index.to(device), batch.y.to(device)
+            data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y).to(device)
+            # Forward pass
+            outputs = model(data)
+            outputs_all = outputs[:-1]
+            output_final = outputs[-1:]
+            
+            loss_final = F.mse_loss(output_final[-1].squeeze(), batch_y)
+            # Calcular la pérdida utilizando tu función custom_loss
+            loss_all = custom_loss(outputs_all, batch_y) + loss_final
+            
+            
+            # Acumula el valor de la pérdida y cuenta los lotes
+            epoch_loss += loss_all.item() + loss_final.item()
+            batch_count += 1
+            
+            # Backward pass y optimización
+            optimizer.zero_grad()
+            loss_all.backward()
+            optimizer.step()
+        
+        # Almacena el promedio de la pérdida de la época
+        epoch_loss /= batch_count
+        loss_values.append(epoch_loss)
+        
+        print(f"Epoca [{epoch+1}/{num_epochs}], Loss todas las capas: {epoch_loss:.4f}")
+        print(f"Epoch [{epoch+1}/{num_epochs}], Loss capa final: {loss_final:.4f}")
+    
+    loss_values_kfold.append(loss_values)
+
+
 # Graficando los valores de pérdida
 plt.plot(loss_values)
 plt.xlabel('Epoca')
@@ -224,44 +245,70 @@ plt.title('Perdida por epoca')
 plt.grid(True)
 plt.show()
 
-# Evaluación
-model.eval()
+# Evaluar el modelo en el conjunto de prueba
+
+# Preparar el DataLoader para el conjunto de prueba
+test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=False) 
+
+# Lista para almacenar las pérdidas del conjunto de prueba
+test_losses = []
+
+# Desactivar el cálculo de gradientes para mejorar la eficiencia
 with torch.no_grad():
-    total_loss = 0
-    predictions = [] # Almacenaremos todas las predicciones aquí
+    model.eval()  # Cambiar el modelo a modo de evaluación
+
+    total_loss = 0.0
+    batch_count = 0
+    
     for batch in test_loader:
         # Extraer datos del lote
-        _, _, batch_y = batch.x, batch.edge_index, batch.y
-        data = Data(x=batch.x, edge_index=batch.edge_index, y=batch.y)
+        batch_x, batch_edge_index, batch_y = batch.x.to(device), batch.edge_index.to(device), batch.y.to(device)
+        data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y).to(device)
+        
         # Forward pass
         outputs = model(data)
-        predictions.append(outputs)  # Guardar las predicciones de este lote
-        loss = criterion(outputs, batch_y)
-        total_loss += loss.item() * batch.num_graphs
-    avg_loss = total_loss / len(test_data_list)
-    print(f"Test Loss: {avg_loss:.4f}")
+        outputs_all = outputs[:-1]
+        output_final = outputs[-1:]
+        
+        # Calcular la pérdida
+        loss_all = custom_loss(outputs_all, batch_y)
+        loss_final = F.mse_loss(output_final[-1].squeeze(), batch_y)
+        
+        # Acumula el valor de la pérdida y cuenta los lotes
+        total_loss += loss_all.item() + loss_final.item()
+        batch_count += 1
 
-# Convertir la lista de tensores de predicciones en un único tensor
-predictions_tensor = torch.cat(predictions).reshape(-1, 7, 7)  # Asumiendo que tus datos son 7x7
+    # Calcula la pérdida promedio del conjunto de prueba
+    average_test_loss = total_loss / batch_count
+    test_losses.append(average_test_loss)
 
-# Dibujar el ground truth y las predicciones para los primeros N casos de prueba
-N = 10
-for i in range(min(N, len(test_data_list))):
-    plt.figure(figsize=(12, 5))
+    print(f"Pérdida en el conjunto de prueba: {average_test_loss:.4f}")
     
-    # Dibujar el ground truth
-    plt.subplot(1, 2, 1)
-    ground_truth = test_y[i].reshape(7, 7).numpy()  # Convertir de tensor a numpy para plotear
-    plt.imshow(ground_truth, cmap='hot')
-    plt.title(f'Caso {i+1} - Ground Truth')
-    plt.colorbar()
-    
-    # Dibujar la predicción
-    plt.subplot(1, 2, 2)
-    prediction = predictions_tensor[i].numpy()  # Convertir de tensor a numpy para plotear
-    plt.imshow(prediction, cmap='hot')
-    plt.title(f'Caso {i+1} - Predicción')
-    plt.colorbar()
+# Evaluar el modelo en el conjunto de prueba
 
-    plt.tight_layout()
-    plt.show()
+test_loader = DataLoader(test_data_list, batch_size=10, shuffle=True)  # Obtiene 10 muestras aleatorias
+
+# Obtiene un lote de datos de prueba
+batch = next(iter(test_loader))
+
+# Extraer datos del lote
+batch_x, batch_edge_index, batch_y = batch.x.to(device), batch.edge_index.to(device), batch.y.to(device)
+data = Data(x=batch_x, edge_index=batch_edge_index, y=batch_y).to(device)
+
+# Forward pass para obtener las predicciones
+with torch.no_grad():
+    model.eval()
+    outputs = model(data)
+    predictions = outputs[-1].squeeze().cpu().numpy()
+    ground_truth = batch_y.cpu().numpy()
+
+# Graficar las predicciones y ground truth
+plt.figure(figsize=(12, 6))
+plt.plot(predictions, 'ro', label='Predicciones')
+plt.plot(ground_truth, 'bo', label='Ground Truth')
+plt.xlabel('Ejemplo')
+plt.ylabel('Valor')
+plt.title('Comparación de Predicciones vs Ground Truth')
+plt.legend()
+plt.grid(True)
+plt.show()

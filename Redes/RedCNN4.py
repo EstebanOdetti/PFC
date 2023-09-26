@@ -18,7 +18,7 @@ from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-mat_fname = 'Datasets/mi_matriz_solo_diritletch'
+mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 
@@ -163,7 +163,7 @@ ponderacion_interior = 0.6
 ponderacion_frontera = 0.4
 
 # Bucle de entrenamiento
-for epoch in range(10000):
+for epoch in range(200):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)

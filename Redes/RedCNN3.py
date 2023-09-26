@@ -17,7 +17,7 @@ from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-mat_fname = 'Datasets/mi_matriz_solo_diritletch'
+mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 

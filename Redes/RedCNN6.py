@@ -131,7 +131,7 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
     optimizer = optim.Adam(model.parameters(), lr = 0.001)
 
     # Bucle de entrenamiento y validación
-    for epoch in range(200):
+    for epoch in range(100):
         train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = 0.0, 0.0, 0.0, 0.0 
         num_batches_train, num_batches_val = 0, 0
         for inputs, labels in trainloader:
@@ -140,8 +140,8 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
             outputs = model(inputs)
             outputs_all = outputs[:-1]
             output_final = outputs[-1:]
-            loss_all = custom_loss(outputs_all, labels)
             loss_final = custom_loss(output_final, labels)
+            loss_all = custom_loss(outputs_all, labels)  + loss_final
             loss_all.backward()
             optimizer.step()
             train_loss_total += loss_all.item()
@@ -253,11 +253,9 @@ plt.legend()
 
 # Mostrar la gráfica
 plt.show()
-from tensorboardX import SummaryWriter
-# Asegúrate de que tanto el modelo como el tensor de entrada estén en el mismo dispositivo (por ejemplo, CPU)
-device = torch.device("cpu")
-model.to(device)
-input_tensor = torch.randn(1, 1, 64, 64).to(device)
 
-# Ahora, puedes agregar tu modelo al escritor de resumen
-writer.add_graph(model, input_to_model=input_tensor)
+input_tensor, _ = test_dataset_dirichlet[0]
+input_example = input_tensor.unsqueeze(0).to(device)
+
+# Considerando que tienes un modelo llamado `model` y una entrada de ejemplo llamada `input_example`
+torch.onnx.export(model, input_example, 'model_CNN_mejorada.onnx',input_names=['input'], output_names=['output'])
