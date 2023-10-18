@@ -196,11 +196,11 @@ ponderacion_interior = 0.1
 ponderacion_frontera = 0.9
 
 # Bucle de entrenamiento
-for epoch in range(10000):
+for epoch in range(500):
     for i, data in enumerate(train_loader, 0):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
-
+        print("ENTRENANDO")
         # Cero los gradientes del optimizador
         optimizer.zero_grad()
 

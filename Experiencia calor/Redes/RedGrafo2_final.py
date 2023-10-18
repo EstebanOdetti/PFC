@@ -10,6 +10,7 @@ import torch.optim as optim
 import matplotlib.pyplot as plt
 from itertools import product
 import torch.nn as nn
+from sklearn.model_selection import KFold
 
 # Cargar la matriz
 mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
@@ -117,12 +118,8 @@ class GraphNetwork(torch.nn.Module):
         super(GraphNetwork, self).__init__()
         self.conv1 = ClusterGCNConv(3, 16)
         self.conv2 = ClusterGCNConv(16, 16)
-        self.conv3 = ClusterGCNConv(16, 32)
-        self.conv4 = ClusterGCNConv(32, 64)
-        self.conv5 = ClusterGCNConv(64, 64)
-        self.conv6 = ClusterGCNConv(64, 32)
-        self.conv7 = ClusterGCNConv(32, 16) 
-        self.conv8 = ClusterGCNConv(16, 1)
+        self.conv3 = ClusterGCNConv(16, 16)
+        self.conv4 = ClusterGCNConv(16, 1)
 
     def forward(self, x, edge_index):
         x = self.conv1(x, edge_index)
@@ -133,21 +130,13 @@ class GraphNetwork(torch.nn.Module):
         x = F.leaky_relu(x, 0.1)
         x = self.conv4(x, edge_index)
         x = F.leaky_relu(x, 0.1)
-        x = self.conv5(x, edge_index)
-        x = F.leaky_relu(x, 0.1)
-        x = self.conv6(x, edge_index)
-        x = F.leaky_relu(x, 0.1)
-        x = self.conv7(x, edge_index)
-        x = F.leaky_relu(x, 0.1)
-        x = self.conv8(x, edge_index)
-        x = F.leaky_relu(x, 0.1)
         return x.view(-1)
 
 model = GraphNetwork()
 
 # Parámetros
 batch_size = 64
-learning_rate = 0.0001
+learning_rate = 0.01
 num_epochs = 200
 
 # DataLoaders
@@ -156,45 +145,73 @@ test_loader = DataLoader(test_data_list, batch_size=batch_size, shuffle=False)
 
 # Función de pérdida y optimizador
 criterion = torch.nn.MSELoss()  # Por ejemplo, pérdida cuadrática media para problemas de regresión
-optimizer = optim.SGD(model.parameters(), lr=learning_rate)
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
 
-import matplotlib.pyplot as plt
+k_folds = 5
+kfold = KFold(n_splits=k_folds, shuffle=True)
 
-# Inicializa una lista para almacenar los valores de pérdida de cada época
-loss_values = []
-
-for epoch in range(num_epochs):
-    model.train()
-    epoch_loss = 0
-    batch_count = 0
-    for batch in train_loader:
-        # Extraer datos del lote
-        batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
-        
-        # Forward pass
-        outputs = model(batch_x, batch_edge_index)
-        loss = criterion(outputs, batch_y)
-        
-        # Acumula el valor de la pérdida y cuenta los lotes
-        epoch_loss += loss.item()
-        batch_count += 1
-        
-        # Backward pass y optimización
-        optimizer.zero_grad()
-        loss.backward()
-        optimizer.step()
+# Lista para almacenar las pérdidas de validación
+val_loss_values = []
+train_loss_values = []
+for fold, (train_indices, val_indices) in enumerate(kfold.split(train_data_list)):
+    # Obtener datos de entrenamiento y validación utilizando los índices
+    train_data = [train_data_list[i] for i in train_indices]
+    val_data = [train_data_list[i] for i in val_indices]
     
-    # Almacena el promedio de la pérdida de la época
-    epoch_loss /= batch_count
-    loss_values.append(epoch_loss)
-    
-    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {epoch_loss:.4f}")
+    train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
+    val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
+
+    # Restablece tu modelo y optimizador para cada fold
+    model = GraphNetwork()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+
+    for epoch in range(num_epochs):
+        model.train()
+        epoch_loss = 0
+        batch_count = 0
+        for batch in train_loader:
+            batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
+            outputs = model(batch_x, batch_edge_index)
+            loss = criterion(outputs, batch_y)
+            epoch_loss += loss.item()
+            batch_count += 1
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+        epoch_loss /= batch_count
+        train_loss_values.append(epoch_loss)
+        # Evaluar en el conjunto de validación
+        model.eval()
+        val_epoch_loss = 0
+        val_batch_count = 0
+        with torch.no_grad():
+            for batch in val_loader:
+                batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
+                outputs = model(batch_x, batch_edge_index)
+                loss = criterion(outputs, batch_y)
+                val_epoch_loss += loss.item()
+                val_batch_count += 1
+        
+        val_epoch_loss /= val_batch_count
+        val_loss_values.append(val_epoch_loss)
+        
+        print(f"Fold [{fold+1}/5], Epoch [{epoch+1}/{num_epochs}], Training Loss: {epoch_loss:.4f}, Validation Loss: {val_epoch_loss:.4f}")
+
 
 # Graficando los valores de pérdida
-plt.plot(loss_values)
+plt.plot(val_loss_values)
 plt.xlabel('Epoca')
-plt.ylabel('Perdida')
-plt.title('Perdida por epoca')
+plt.ylabel('Perdida de Validación')
+plt.title('Perdida de Validación por Epoca')
+plt.grid(True)
+plt.show()
+
+# Graficando los valores de pérdida
+plt.plot(train_loss_values)
+plt.xlabel('Epoca')
+plt.ylabel('Perdida de entrenamiento')
+plt.title('Perdida de entrenamiento por Epoca')
 plt.grid(True)
 plt.show()
 
@@ -217,24 +234,61 @@ with torch.no_grad():
 # Convertir la lista de tensores de predicciones en un único tensor
 predictions_tensor = torch.cat(predictions).reshape(-1, 7, 7)  # Asumiendo que tus datos son 7x7
 
-N = 10
-# Configura una figura grande
-plt.figure(figsize=(24, 5*N))
+model = model.to('cpu')
+batch_x = batch_x.to('cpu')
+batch_edge_index = batch_edge_index.to('cpu')
+
+N = 2
+# Configure a large figure
+plt.figure(figsize=(26, 5*N)) 
 
 for i in range(min(N, len(test_data_list))):
-    # Dibujar el ground truth
-    plt.subplot(N, 2, 2*i + 1)  # Esta línea se ha modificado para adaptarse al nuevo diseño
-    ground_truth = test_y[i].reshape(7, 7).numpy()  # Convertir de tensor a numpy para plotear
+    # Draw the ground truth
+    plt.subplot(N, 2, 2*i + 1)  # This line has been modified to fit the new design
+    ground_truth = test_y[i].reshape(7, 7).cpu().numpy()  # Convert from tensor to numpy for plotting
     plt.imshow(ground_truth, cmap='hot')
-    plt.title(f'Caso {i+1} - Ground Truth')
+    plt.title(f'Caso {i+1} - Ground Truth', fontsize=10)  # reduce font size
     plt.colorbar()
     
-    # Dibujar la predicción
-    plt.subplot(N, 2, 2*i + 2)  # Esta línea se ha modificado para adaptarse al nuevo diseño
-    prediction = predictions_tensor[i].numpy()  # Convertir de tensor a numpy para plotear
+    # Draw the prediction
+    plt.subplot(N, 2, 2*i + 2)  # This line has been modified to fit the new design
+    prediction = predictions_tensor[i].cpu().numpy()  # Convert from tensor to numpy for plotting
     plt.imshow(prediction, cmap='hot')
-    plt.title(f'Caso {i+1} - Predicción')
+    plt.title(f'Caso {i+1} - Predicción', fontsize=10)
     plt.colorbar()
 
 plt.tight_layout()
 plt.show()
+
+# Aplanar las predicciones y los valores reales (ground truth)
+predictions_flat = predictions_tensor.view(-1).cpu().numpy()
+test_y_flat = torch.cat([batch.y for batch in test_loader]).view(-1).cpu().numpy()
+
+# Crear el scatter plot
+plt.figure(figsize=(10, 10))
+
+# Graficar los puntos del ground truth en rojo
+plt.scatter(test_y_flat, predictions_flat, c='red', label='Ground Truth')
+
+# Graficar los puntos de la salida de la red en azul
+plt.scatter(test_y_flat, test_y_flat, c='blue', label='Salida de la red')
+
+# Establecer etiquetas de los ejes
+plt.xlabel("Salida de la red")
+plt.ylabel("Ground Truth")
+
+# Establecer título de la gráfica
+plt.title("Dispersión de los puntos")
+
+# Mostrar la leyenda
+plt.legend()
+
+# Mostrar la gráfica
+plt.show()
+
+
+input_tensor, _ = test_loader.dataset[0]
+input_example = input_tensor.unsqueeze(0).to('cpu')
+
+# Considering you have a model named `model` and an input example named `input_example`
+torch.onnx.export(model, input_example, 'model_grafo_mejorada.onnx', input_names=['input'], output_names=['output'])

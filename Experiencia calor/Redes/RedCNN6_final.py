@@ -116,7 +116,8 @@ kfold = KFold(n_splits=k_folds, shuffle=True)
 # Inicializar la mejor pérdida a un número muy alto
 best_val_loss = float('inf')
 best_model_state = None
-
+test_loss_values = []
+val_loss_values = []
 for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirichlet)):
     # Dividir los datos de entrenamiento en conjuntos de entrenamiento y validación
     train_subset = torch.utils.data.Subset(train_dataset_dirichlet, train_index)
@@ -166,11 +167,26 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
         train_loss_ultima /= num_batches_train
         val_loss_total /= num_batches_val
         val_loss_ultima /= num_batches_val
+        test_loss_values.append(train_loss_ultima)
+        val_loss_values.append(val_loss_ultima)
         
-        if (epoch+1) % 50 == 0:
-            print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}')
-            print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}')
+        print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}')
+        print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}')
       
+# Graficando los valores de pérdida
+plt.plot(test_loss_values)
+plt.xlabel('Epoca')
+plt.ylabel('Perdida de entrenamiento')
+plt.title('Perdida de entrenamiento por Epoca')
+plt.grid(True)
+plt.show()
+
+plt.plot(val_loss_values)
+plt.xlabel('Epoca')
+plt.ylabel('Perdida de Validación')
+plt.title('Perdida de Validación por Epoca')
+plt.grid(True)
+plt.show()
 
 model = HeatPropagationNet().to(device)
 model.load_state_dict(best_model_state)
@@ -209,37 +225,38 @@ print('Mean Loss on Test Set:', mean_loss)
 
 # Visualizar las salidas y ground truth una vez después de evaluar todo el conjunto de pruebas
 # Crear una figura con una cuadrícula de subplots
-fig, axs = plt.subplots(5, 2, figsize=(10, 20))
+fig, axs = plt.subplots(2, 2, figsize=(10, 20))
 
-# Recorrer las 5 salidas y ground truth
-for j in range(5):
+# Recorrer las 2 salidas y ground truth
+for j in range(2):
     # Mostrar la salida de la red en el primer subplot de la fila j
-    axs[j, 0].imshow(outputs[-1][j, 0].cpu().numpy(), cmap='hot')
+    im_output = axs[j, 0].imshow(outputs[-1][j, 0].cpu().numpy(), cmap='hot')
     axs[j, 0].set_title("Output de la red")
+    fig.colorbar(im_output, ax=axs[j, 0], orientation='vertical')
 
     # Mostrar el ground truth en el segundo subplot de la fila j
-    axs[j, 1].imshow(labels[j, 0].cpu().numpy(), cmap='hot')
+    im_label = axs[j, 1].imshow(labels[j, 0].cpu().numpy(), cmap='hot')
     axs[j, 1].set_title("Ground Truth")
+    fig.colorbar(im_label, ax=axs[j, 1], orientation='vertical')
+    
 
 # Ajustar los espacios entre subplots y entre las figuras
-fig.tight_layout()
+fig.tight_layout(pad=5.0)
 
 # Mostrar la figura
 plt.show()
 
 # Crear una figura y un eje para la gráfica
-plt.figure(figsize=(8, 6))
+plt.figure()
 ax = plt.gca()
 
 # Obtener los valores del ground truth y la salida de la red
 ground_truth = labels[:, 0].cpu().numpy().flatten()
 red_output = outputs[-1][:, 0].cpu().numpy().flatten()
 
-# Graficar los puntos del ground truth en rojo
-plt.scatter(ground_truth, red_output, c='red', label='Ground Truth')
+plt.scatter(red_output,ground_truth, c='red', label='Ground Truth')
 
-# Graficar los puntos de la salida de la red en azul
-plt.scatter(red_output, red_output, c='blue', label='Salida de la red')
+plt.scatter(ground_truth, ground_truth, c='blue', label='Salida de la red')
 
 # Establecer etiquetas de los ejes
 plt.xlabel("Salida de la red")
