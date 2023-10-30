@@ -1,6 +1,9 @@
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
+import torch
+import torch.nn as nn
+import torch.optim as optim
 
 # Cargar datos
 file_path = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/dataset_1_random_sin_nombre_exp_coma.csv'  # Reemplaza esto con la ruta de tu archivo CSV
@@ -16,17 +19,14 @@ X = scaler.fit_transform(X)
 
 # Dividir los datos en conjuntos de entrenamiento y prueba
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-import torch
-import torch.nn as nn
-import torch.optim as optim
 
 # Definir la arquitectura de la red neuronal
 class Net(nn.Module):
     def __init__(self):
         super(Net, self).__init__()
-        self.fc1 = nn.Linear(2, 32)  # Capa de entrada a capa oculta
-        self.fc2 = nn.Linear(32, 2)   # Capa oculta a capa de salida
-        self.relu = nn.ReLU()         # Función de activación ReLU
+        self.fc1 = nn.Linear(2, 32)  
+        self.fc2 = nn.Linear(32, 2)   
+        self.relu = nn.ReLU()         
 
     def forward(self, x):
         x = self.relu(self.fc1(x))
@@ -43,7 +43,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 # Entrenar la red neuronal
-epochs = 10000
+epochs = 10
 for epoch in range(epochs):
     # Forward pass
     outputs = model(X_train_tensor)
@@ -56,6 +56,9 @@ for epoch in range(epochs):
     
     if epoch % 100 == 0:
         print(f'Epoch {epoch}/{epochs}, Loss: {loss.item()}')
+        
+# Seleccionar una fila de ejemplo del conjunto de datos de prueba
+input_example = torch.tensor(X_test[0], dtype=torch.float32).unsqueeze(0)
 
-# Evaluar el modelo en el conjunto de prueba (opcional)
-# ...
+# Exportar el modelo a formato ONNX
+torch.onnx.export(model, input_example, 'model_MLP_dinamica_1.onnx', input_names=['input'], output_names=['output'])
