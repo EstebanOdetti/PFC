@@ -1,6 +1,7 @@
 import os
 import numpy as np
 from sklearn.mixture import GaussianMixture
+import matplotlib.pyplot as plt
 
 # Directorio base donde se encuentran tus archivos FFT y GMM
 directorio_base = os.path.dirname(__file__)  # Obtener el directorio del script actual
@@ -8,7 +9,6 @@ directorio_base = os.path.dirname(__file__)  # Obtener el directorio del script 
 # Define las rutas relativas desde el directorio base
 ruta_carpeta_fft = os.path.join(directorio_base, 'FFT')
 ruta_carpeta_gmm = os.path.join(directorio_base, 'GMM')
-
 # Lista todos los archivos en la carpeta
 archivos_fft = [f for f in os.listdir(ruta_carpeta_fft) if f.endswith('_fftX.txt')]
 
@@ -40,5 +40,21 @@ for archivo in archivos_fft:
             cov_xx, cov_xy, _, cov_yy = gmm.covariances_[i].flatten()
             peso = gmm.weights_[i]
             archivo_gmm.write(f"{mean_x},{mean_y},{cov_xx},{cov_xy},{cov_yy},{peso}\n")
+            # Visualización de la FFT
+   
+    plt.figure(figsize=(10, 4))
+    plt.subplot(1, 2, 1)
+    plt.plot(frecuencias, amplitudes)
+    plt.title('FFT')
+
+    # Visualización del modelo GMM
+    plt.subplot(1, 2, 2)
+    plt.scatter(X[:, 0], X[:, 1], c=gmm.predict(X), s=20, cmap='viridis')
+    plt.title('Modelo GMM')
+    plt.xlabel('Frecuencia')
+    plt.ylabel('Amplitud')
+
+   
+    plt.close()
 
 print("Los modelos GMM han sido ajustados y guardados con éxito.")

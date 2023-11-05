@@ -2,10 +2,19 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm
+import os
+
+# Directorio base donde se encuentran tus archivos FFT y GMM
+directorio_base = os.path.dirname(__file__)  # Obtener el directorio del script actual
+
+# Define las rutas relativas desde el directorio base
+ruta_carpeta_fft = os.path.join(directorio_base, 'FFT')
+ruta_carpeta_gmm = os.path.join(directorio_base, 'GMM')
 
 # Asumiendo que tienes un archivo por cada FFT y por cada GMM
-archivo_fft = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Clasificador de terreno/ade_rip_pend_gran_circulo_fftX.txt'
-archivo_gmm = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Clasificador de terreno/ade_rip_pend_gran_circulo_gmmX.txt'
+archivo_fft = os.path.join(ruta_carpeta_fft, 'ade_rip_pend_gran_circulo_fftX.txt')
+archivo_gmm = os.path.join(ruta_carpeta_gmm, 'ade_rip_pend_gran_circulo_gmmX.txt')
+
 
 # Cargamos los datos de la FFT
 # Suponemos que el archivo FFT tiene dos columnas, sin nombres de columna en el archivo
@@ -18,15 +27,17 @@ gmm_data = pd.read_csv(archivo_gmm)
 plt.figure(figsize=(12, 7))
 plt.plot(fft_data["Frequency (Hz)"], fft_data["Amplitude"], label='FFT Data')
 
-# Graficamos las gaussianas ajustadas
+# Calculamos la combinación no normalizada de las gaussianas ajustadas
+combined_gaussian = np.zeros(fft_data.shape[0])
 for i, row in gmm_data.iterrows():
-    # Calculamos el rango de la gaussiana
-    gaus_x = np.linspace(fft_data["Frequency (Hz)"].min(), fft_data["Frequency (Hz)"].max(), 500)
-    # Para cada gaussiana calculamos su PDF
-    gaus_y = row['peso'] * norm.pdf(gaus_x, row['media_x'], np.sqrt(row['cov_xx']))
-    plt.plot(gaus_x, gaus_y, label=f'Gaussian {i+1}')
+    # Para cada gaussiana calculamos su PDF y lo sumamos al resultado
+    gaussian = norm.pdf(fft_data["Frequency (Hz)"], row['media_x'], np.sqrt(row['cov_xx']))
+    combined_gaussian += gaussian
 
-plt.title('FFT y Gaussianas Ajustadas')
+# Graficamos la combinación lineal de las gaussianas
+plt.plot(fft_data["Frequency (Hz)"], combined_gaussian, label='Combined Gaussian')
+
+plt.title('FFT y Combinación Lineal de Gaussianas Ajustadas')
 plt.xlabel('Frecuencia (Hz)')
 plt.ylabel('Amplitud')
 plt.legend()
