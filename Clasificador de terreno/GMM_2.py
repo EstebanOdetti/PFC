@@ -26,7 +26,7 @@ for archivo in archivos_fft:
     X = np.column_stack((frecuencias, amplitudes))
 
     # Crea y ajusta el modelo GaussianMixture
-    gmm = GaussianMixture(n_components=3, random_state=0, max_iter = 1000)
+    gmm = GaussianMixture(n_components=6, random_state=0, max_iter = 1000)
     gmm.fit(X)
 
     # Guardar los resultados
