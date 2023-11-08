@@ -18,7 +18,7 @@ data.columns = [
     'front_target_freq', 'front_target_ten'
 ]
 wheel_data = data[['front_wheel_freq', 'front_wheel_psdx', 'front_wheel_psdy', 'front_wheel_psdz']].to_numpy()
-targets = data[['front_target_freq']].to_numpy()[::30]  # Seleccionar solo la penúltima columna
+targets = data[['front_target_ten']].to_numpy()[::30]  # Seleccionar solo la última columna (Dimensión 2)
 
 wheel_data = wheel_data.reshape(-1, 30, 4)
 
@@ -35,7 +35,7 @@ class CNNModel(nn.Module):
         self.combined_conv = nn.Conv2d(64, 1, (3, 3), padding=1)
         
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(120, 1)  # Salida de una sola dimensión (Dimensión 1)
+        self.fc = nn.Linear(120, 1)  # Salida de una sola dimensión (Dimensión 2)
 
     def forward(self, wheel_data):
         x = self.conv1(wheel_data)
@@ -87,19 +87,20 @@ with torch.no_grad():
 # Evaluar el modelo en todo el conjunto de datos
 model.eval()
 with torch.no_grad():
+
     outputs = model(wheel_data)
 
 # Convertir los tensores de PyTorch a matrices NumPy
 outputs = outputs.numpy()
 targets = targets.numpy()
 
-# Crear un scatter plot para la Dimensión 1
+# Crear un scatter plot para la Dimensión 2
 plt.figure(figsize=(8, 6))
-plt.scatter(targets, targets, label='Objetivos reales (Dimensión 1)', c='blue')
-plt.scatter(outputs, outputs, label='Predicciones (Dimensión 1)', c='red')
-plt.xlabel('Dimensión 1')
-plt.ylabel('Dimensión 1')
-plt.title('Gráfico de dispersión de Dimensión 1 (Objetivos vs. Predicciones)')
+plt.scatter(targets, targets, label='Objetivos reales (tension)', c='blue')
+plt.scatter(outputs, outputs, label='Predicciones (tension)', c='red')
+plt.xlabel('tension')
+plt.ylabel('tension')
+plt.title('Gráfico de dispersión de tension (Objetivos vs. Predicciones)')
 plt.grid(True)
 plt.legend()
 plt.show()

@@ -18,7 +18,7 @@ data.columns = [
     'front_target_freq', 'front_target_ten'
 ]
 wheel_data = data[['front_wheel_freq', 'front_wheel_psdx', 'front_wheel_psdy', 'front_wheel_psdz']].to_numpy()
-targets = data[['front_target_ten']].to_numpy()[::30]  # Seleccionar solo la última columna (Dimensión 2)
+targets = data[['front_target_freq', 'front_target_ten']].to_numpy()[::30]
 
 wheel_data = wheel_data.reshape(-1, 30, 4)
 
@@ -29,13 +29,13 @@ targets = torch.tensor(targets, dtype=torch.float32)
 # Definir el modelo
 class CNNModel(nn.Module):
     def __init__(self):
-        super().__init__()
+        super().__init__()  # Corrección aquí
         self.conv1 = nn.Conv2d(1, 32, (3, 3), padding=1)
         self.conv2 = nn.Conv2d(32, 64, (3, 3), padding=1)
         self.combined_conv = nn.Conv2d(64, 1, (3, 3), padding=1)
         
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(120, 1)  # Salida de una sola dimensión (Dimensión 2)
+        self.fc = nn.Linear(120, 2)
 
     def forward(self, wheel_data):
         x = self.conv1(wheel_data)
@@ -87,20 +87,30 @@ with torch.no_grad():
 # Evaluar el modelo en todo el conjunto de datos
 model.eval()
 with torch.no_grad():
-
     outputs = model(wheel_data)
 
 # Convertir los tensores de PyTorch a matrices NumPy
 outputs = outputs.numpy()
 targets = targets.numpy()
 
+# Crear un scatter plot para la Dimensión 1
+plt.figure(figsize=(8, 6))
+plt.scatter(targets[:, 0], targets[:, 0], label='Objetivos reales (frecuencia)', c='blue')
+plt.scatter(outputs[:, 0], outputs[:, 0], label='Predicciones (frecuencia)', c='red')
+plt.xlabel('ground true')
+plt.ylabel('prediccion')
+plt.title('Gráfico de dispersión de frecuecnia (Objetivos vs. Predicciones)')
+plt.grid(True)
+plt.legend()
+plt.show()
+
 # Crear un scatter plot para la Dimensión 2
 plt.figure(figsize=(8, 6))
-plt.scatter(targets, targets, label='Objetivos reales (Dimensión 2)', c='blue')
-plt.scatter(outputs, outputs, label='Predicciones (Dimensión 2)', c='red')
-plt.xlabel('Dimensión 2')
-plt.ylabel('Dimensión 2')
-plt.title('Gráfico de dispersión de Dimensión 2 (Objetivos vs. Predicciones)')
+plt.scatter(targets[:, 1], targets[:, 1], label='Objetivos reales (tension)', c='blue')
+plt.scatter(outputs[:, 1], outputs[:, 1], label='Predicciones (tension)', c='red')
+plt.xlabel('ground true')
+plt.ylabel('prediccion')
+plt.title('Gráfico de dispersión de tension (Objetivos vs. Predicciones)')
 plt.grid(True)
 plt.legend()
 plt.show()

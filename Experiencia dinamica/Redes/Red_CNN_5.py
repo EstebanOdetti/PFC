@@ -18,7 +18,7 @@ data.columns = [
     'front_target_freq', 'front_target_ten'
 ]
 wheel_data = data[['front_wheel_freq', 'front_wheel_psdx', 'front_wheel_psdy', 'front_wheel_psdz']].to_numpy()
-targets = data[['front_target_freq', 'front_target_ten']].to_numpy()[::30]
+targets = data[['front_target_freq']].to_numpy()[::30]  # Seleccionar solo la penúltima columna
 
 wheel_data = wheel_data.reshape(-1, 30, 4)
 
@@ -29,13 +29,13 @@ targets = torch.tensor(targets, dtype=torch.float32)
 # Definir el modelo
 class CNNModel(nn.Module):
     def __init__(self):
-        super().__init__()  # Corrección aquí
+        super().__init__()
         self.conv1 = nn.Conv2d(1, 32, (3, 3), padding=1)
         self.conv2 = nn.Conv2d(32, 64, (3, 3), padding=1)
         self.combined_conv = nn.Conv2d(64, 1, (3, 3), padding=1)
         
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(120, 2)
+        self.fc = nn.Linear(120, 1)  # Salida de una sola dimensión (Dimensión 1)
 
     def forward(self, wheel_data):
         x = self.conv1(wheel_data)
@@ -95,22 +95,17 @@ targets = targets.numpy()
 
 # Crear un scatter plot para la Dimensión 1
 plt.figure(figsize=(8, 6))
-plt.scatter(targets[:, 0], targets[:, 0], label='Objetivos reales (Dimensión 1)', c='blue')
-plt.scatter(outputs[:, 0], outputs[:, 0], label='Predicciones (Dimensión 1)', c='red')
-plt.xlabel('Dimensión 1')
-plt.ylabel('Dimensión 1')
-plt.title('Gráfico de dispersión de Dimensión 1 (Objetivos vs. Predicciones)')
+plt.scatter(targets, targets, label='Objetivos reales (frecuencia)', c='blue')
+plt.scatter(outputs, outputs, label='Predicciones (frecuencia)', c='red')
+plt.xlabel('ground true')
+plt.ylabel('prediccion')
+plt.title('Gráfico de dispersión de frecuencia (Objetivos vs. Predicciones)')
 plt.grid(True)
 plt.legend()
 plt.show()
 
-# Crear un scatter plot para la Dimensión 2
-plt.figure(figsize=(8, 6))
-plt.scatter(targets[:, 1], targets[:, 1], label='Objetivos reales (Dimensión 2)', c='blue')
-plt.scatter(outputs[:, 1], outputs[:, 1], label='Predicciones (Dimensión 2)', c='red')
-plt.xlabel('Dimensión 2')
-plt.ylabel('Dimensión 2')
-plt.title('Gráfico de dispersión de Dimensión 2 (Objetivos vs. Predicciones)')
-plt.grid(True)
-plt.legend()
-plt.show()
+# Seleccionar una fila de ejemplo del conjunto de datos de prueba
+input_example = torch.tensor(X_test[0], dtype=torch.float32).view(1, 1, -1)
+
+# Exportar el modelo a formato ONNX
+torch.onnx.export(model, input_example, 'model_CNN_dinamica_1.onnx', input_names=['input'], output_names=['output'])
