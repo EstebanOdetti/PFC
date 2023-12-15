@@ -6,19 +6,20 @@ import torch.nn as nn
 import torch.optim as optim
 
 # Cargar datos
-file_path = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/dataset_1_random_sin_nombre_exp_coma.csv'  # Reemplaza esto con la ruta de tu archivo CSV
-data = pd.read_csv(file_path, delimiter=',')
-
+file_path_entradas = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/FINAL/combined_data.csv' 
+data_entradas = pd.read_csv(file_path_entradas, delimiter=',')
+file_path_salidas = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/FINAL/Mediciones_simulaciones.csv'  
+data_salidas = pd.read_csv(file_path_salidas, delimiter=',')
 # Extraer las columnas de entrada y salida
-X = data[['Freq', 'PSD']].values
-y = data[['frecuencia predominante', 'Tension resultante media']].values
+X = data_entradas[['Freq', 'PSD']].values
+y = data_salidas[['P1_Frecuencia', 'P1_RMS', 'P2_Frecuencia', 'P2_RMS']].values
 
 # Normalizar los datos de entrada
-scaler = StandardScaler()
-X = scaler.fit_transform(X)
+#scaler = StandardScaler()
+#X = scaler.fit_transform(X)
 
 # Dividir los datos en conjuntos de entrenamiento y prueba
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state = 42)
 
 # Definir la arquitectura de la red neuronal
 class Net(nn.Module):
