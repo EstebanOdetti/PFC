@@ -44,5 +44,5 @@ def procesar_datos(file_path_x, file_path_y, output_file_path):
 # Usar la función
 file_path_x = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/FINAL/combined_data.csv' 
 file_path_y= 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/FINAL/Mediciones_simulaciones.csv'  
-output_file_path = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/matriz_total.csv'
+output_file_path = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia dinamica/Datasets/matriz_total_ordenado_bien.csv'
 procesar_datos(file_path_x, file_path_y, output_file_path)

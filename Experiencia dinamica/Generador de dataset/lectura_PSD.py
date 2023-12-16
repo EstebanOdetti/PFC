@@ -38,4 +38,4 @@ combined_data = pd.DataFrame({
 })
 
 # Guarda el DataFrame combinado en un nuevo archivo
-combined_data.to_csv("combined_data.csv", index=False)
+combined_data.to_csv("combined_data_bien_ordenado.csv", index=False)
