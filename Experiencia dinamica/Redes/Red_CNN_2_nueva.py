@@ -30,7 +30,7 @@ if X.shape[0] != y.shape[0]:
     raise ValueError("La cantidad de casos en 'combined_data' y 'Mediciones_simulaciones' no coincide.")
 
 # Dividir los datos en conjuntos de entrenamiento y prueba, manteniendo el orden
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, shuffle=False)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=5, shuffle=False)
 
 # Mostrar un ejemplo de un caso
 example_case = X[0, :].reshape(num_rows_per_case, 4)
@@ -151,22 +151,23 @@ with torch.no_grad():
             errors_by_feature_combined_cnn[i].append(batch_errors[i])
 
 # Convertir las listas en arrays numpy
+# Convertir las listas en arrays numpy
 predictions_combined_cnn = np.concatenate(predictions_combined_cnn, axis=0)
 
-
-
-# Reformatear predictions_cnn a 2D si es necesario
-predictions_cnn = predictions_cnn.reshape(-1, output_size)
+# Reformatear predictions_combined_cnn a 2D si es necesario
+predictions_combined_cnn = predictions_combined_cnn.reshape(-1, output_size)
 
 y_test_np = y_test
 
 # Gráfica del ground truth vs predicciones en subgráficos
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
 
+feature_labels = ['horquilla_frecuencia', 'horquilla_tension', 'asiento_frecuencia', 'asiento_tension']
+
 for i, ax in enumerate(axes.flatten()):
-    ax.scatter(y_test_np[:, i], predictions_cnn[:, i], label=f'Feature {i+1} (Predictions)', color='blue')  # Usar predictions_cnn en lugar de predictions
-    ax.scatter(y_test_np[:, i], y_test_np[:, i], label=f'Feature {i+1} (Ground Truth)', color='red', marker='x')
-    ax.set_title(f'Feature {i+1}')
+    ax.scatter(y_test_np[:, i], predictions_combined_cnn[:, i], label=f'{feature_labels[i]} (Predictions)', color='blue')
+    ax.scatter(y_test_np[:, i], y_test_np[:, i], label=f'{feature_labels[i]} (Ground Truth)', color='red', marker='x')
+    ax.set_title(f'{feature_labels[i]}')
     ax.set_xlabel('Ground Truth')
     ax.set_ylabel('Predictions')
     ax.legend()
@@ -176,5 +177,5 @@ plt.show()
 
 # Calcular y mostrar el error medio por característica
 for i in range(output_size):
-    feature_error = np.mean(errors_by_feature_cnn[i])
-    print(f'Average Error for Feature {i+1}: {feature_error:.4f}')
+    feature_error = np.mean(errors_by_feature_combined_cnn[i])
+    print(f'Average Error for {feature_labels[i]}: {feature_error:.4f}')
