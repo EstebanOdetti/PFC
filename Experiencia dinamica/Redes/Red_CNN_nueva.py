@@ -60,8 +60,8 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(64 * num_rows, output_size)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
+        x = F.leaky_relu(self.conv1(x))
+        x = F.leaky_relu(self.conv2(x))
         x = self.flatten(x)
         x = self.fc1(x)
         return x
@@ -118,6 +118,7 @@ with torch.no_grad():
             errors_by_feature_cnn[i].append(batch_errors[i])
 
 # Convertir las listas en arrays numpy
+# Convertir las listas en arrays numpy
 predictions_cnn = np.concatenate(predictions_cnn, axis=0)
 
 # Reformatear predictions_cnn a 2D si es necesario
@@ -128,12 +129,14 @@ y_test_np = y_test
 # Gráfica del ground truth vs predicciones en subgráficos
 fig, axes = plt.subplots(nrows=2, ncols=2, figsize=(12, 8))
 
+feature_labels = ['horquilla_frecuencia', 'horquilla_tension', 'asiento_frecuencia', 'asiento_tension']
+
 for i, ax in enumerate(axes.flatten()):
-    ax.scatter(y_test_np[:, i], predictions_cnn[:, i], label=f'Feature {i+1} (Predictions)', color='blue')  # Usar predictions_cnn en lugar de predictions
-    ax.scatter(y_test_np[:, i], y_test_np[:, i], label=f'Feature {i+1} (Ground Truth)', color='red', marker='x')
-    ax.set_title(f'Feature {i+1}')
-    ax.set_xlabel('Ground Truth')
-    ax.set_ylabel('Predictions')
+    ax.scatter(predictions_cnn[:, i], y_test_np[:, i], label=f'{feature_labels[i]} (Predictions)', color='blue')
+    ax.scatter(y_test_np[:, i], y_test_np[:, i], label=f'{feature_labels[i]} (Ground Truth)', color='red', marker='x')
+    ax.set_title(f'{feature_labels[i]}')
+    ax.set_xlabel('Predictions')
+    ax.set_ylabel('Ground Truth')
     ax.legend()
 
 plt.tight_layout()
@@ -142,4 +145,4 @@ plt.show()
 # Calcular y mostrar el error medio por característica
 for i in range(output_size):
     feature_error = np.mean(errors_by_feature_cnn[i])
-    print(f'Average Error for Feature {i+1}: {feature_error:.4f}')
+    print(f'Average Error for {feature_labels[i]}: {feature_error:.4f}')
