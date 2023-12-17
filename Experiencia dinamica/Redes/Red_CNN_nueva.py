@@ -60,8 +60,8 @@ class CNN(nn.Module):
         self.fc1 = nn.Linear(64 * num_rows, output_size)
 
     def forward(self, x):
-        x = F.relu(self.conv1(x))
-        x = F.relu(self.conv2(x))
+        x = F.leaky_relu(self.conv1(x))
+        x = F.leaky_relu(self.conv2(x))
         x = self.flatten(x)
         x = self.fc1(x)
         return x
