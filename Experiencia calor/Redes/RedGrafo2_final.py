@@ -13,7 +13,7 @@ import torch.nn as nn
 from sklearn.model_selection import KFold
 
 # Cargar la matriz
-mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
+mat_fname = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 
@@ -266,16 +266,14 @@ test_y_flat = torch.cat([batch.y for batch in test_loader]).view(-1).cpu().numpy
 
 # Crear el scatter plot
 plt.figure(figsize=(10, 10))
-
-# Graficar los puntos del ground truth en rojo
-plt.scatter(test_y_flat, predictions_flat, c='red', label='Ground Truth')
-
-# Graficar los puntos de la salida de la red en azul
-plt.scatter(test_y_flat, test_y_flat, c='blue', label='Salida de la red')
+# Graficar los puntos del ground truth en el eje x
+plt.scatter(test_y_flat, test_y_flat, c='red', label='Ground Truth', marker='x')
+# Graficar los puntos de la salida de la red en el eje y
+plt.scatter(test_y_flat, predictions_flat, c='blue', label='Salida de la red')
 
 # Establecer etiquetas de los ejes
-plt.xlabel("Salida de la red")
-plt.ylabel("Ground Truth")
+plt.xlabel("Ground Truth")
+plt.ylabel("Salida de la red")
 
 # Establecer título de la gráfica
 plt.title("Dispersión de los puntos")

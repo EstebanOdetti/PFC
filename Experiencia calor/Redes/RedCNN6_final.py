@@ -14,7 +14,7 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
-mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
+mat_fname = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
 mat = sio.loadmat(mat_fname)
 matriz_cargada = mat['dataset_matriz']
 
@@ -254,13 +254,15 @@ ax = plt.gca()
 ground_truth = labels[:, 0].cpu().numpy().flatten()
 red_output = outputs[-1][:, 0].cpu().numpy().flatten()
 
-plt.scatter(red_output,ground_truth, c='red', label='Ground Truth')
+# Cambiar la función scatter para intercambiar los ejes
+plt.scatter(ground_truth, red_output, c='blue', label='Predicciones')
 
-plt.scatter(ground_truth, ground_truth, c='blue', label='Salida de la red')
+# Las predicciones correctas (ground truth) se grafican en la línea y=x para referencia
+plt.scatter(ground_truth, ground_truth, c='red', label='Ground Truth', marker='x')
 
 # Establecer etiquetas de los ejes
-plt.xlabel("Salida de la red")
-plt.ylabel("Ground Truth")
+plt.xlabel("Ground Truth")
+plt.ylabel("Predicciones")
 
 # Establecer título de la gráfica
 plt.title("Dispersión de los puntos")
@@ -271,8 +273,8 @@ plt.legend()
 # Mostrar la gráfica
 plt.show()
 
-input_tensor, _ = test_dataset_dirichlet[0]
-input_example = input_tensor.unsqueeze(0).to(device)
+#input_tensor, _ = test_dataset_dirichlet[0]
+#input_example = input_tensor.unsqueeze(0).to(device)
 
 # Considerando que tienes un modelo llamado `model` y una entrada de ejemplo llamada `input_example`
-torch.onnx.export(model, input_example, 'model_CNN_mejorada.onnx',input_names=['input'], output_names=['output'])
+#torch.onnx.export(model, input_example, 'model_CNN_mejorada.onnx',input_names=['input'], output_names=['output'])
