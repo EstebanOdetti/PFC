@@ -70,7 +70,7 @@ class DualCNN(nn.Module):
         # Tamaño de la salida de las capas convolucionales de fusión
         # Ajustar según las dimensiones reales
         salida_fusion_size = 256 * num_rows_per_case * 1
-
+        print(salida_fusion_size)
         # Capa completamente conectada
         self.fc = nn.Linear(salida_fusion_size, 4)
 
@@ -112,7 +112,7 @@ criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.00001)
 
 # Entrenamiento
-num_epochs = 100  # Ajusta según sea necesario
+num_epochs = 1  # Ajusta según sea necesario
 
 for epoch in range(num_epochs):
     model.train()
@@ -175,3 +175,13 @@ for i, feature in enumerate(features):
 
 plt.tight_layout()
 plt.show()
+
+# Crear un tensor de ejemplo para 'x_delante' y 'x_atras'
+# Estos tensores deben ser de tipo float32 y tener las dimensiones correctas
+ejemplo_x_delante = torch.randn(1, 4, num_rows_per_case, 1, dtype=torch.float32)
+ejemplo_x_atras = torch.randn(1, 4, num_rows_per_case, 1, dtype=torch.float32)
+
+# Exportar el modelo a ONNX
+# Asegúrate de que los nombres de entrada y salida sean descriptivos y útiles
+torch.onnx.export(model, (ejemplo_x_delante, ejemplo_x_atras), 'model_CNN_EXPDINAMICA_mejorada.onnx',
+                  input_names=['x_delante_input', 'x_atras_input'], output_names=['output'])

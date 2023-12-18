@@ -85,7 +85,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=0.01)
 
 # Entrenamiento
-num_epochs = 150  # Puedes ajustar esto
+num_epochs = 1  # Puedes ajustar esto
 for epoch in range(num_epochs):
     for inputs, targets in train_loader:
         optimizer.zero_grad()
@@ -132,3 +132,15 @@ plt.show()
 for i in range(output_size):
     feature_error = np.mean(errors_by_feature[i])
     print(f'Average Error for Feature {i+1}: {feature_error:.4f}')
+    
+# El tamaño de entrada esperado es 'input_size'
+input_size = 756  # Asegúrate de que esto coincida con la definición de tu modelo
+
+# Crear un tensor de ejemplo con el tamaño de entrada correcto
+# Este tensor debe ser de tipo float32 y tener la dimensión correcta
+ejemplo_input = torch.randn(1, input_size, dtype=torch.float32)
+
+# Exportar el modelo a ONNX
+# Asegúrate de que los nombres de entrada y salida sean descriptivos y útiles
+torch.onnx.export(model, ejemplo_input, 'model_MLP_DINAMICA_FINAL.onnx', 
+                  input_names=['input'], output_names=['output'])
