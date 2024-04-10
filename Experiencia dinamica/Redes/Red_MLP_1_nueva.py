@@ -12,23 +12,29 @@ import numpy as np
 directorio_base = os.path.dirname(__file__)
 
 
-combined_data_path = os.path.join(directorio_base, 'Datasets\FINAL', 'combined_data.csv')
-simulations_data_path = os.path.join(directorio_base, 'Datasets\FINAL', 'Mediciones_simulaciones.csv')
+combined_data_path = os.path.join(
+    directorio_base, "Datasets\FINAL", "combined_data.csv"
+)
+simulations_data_path = os.path.join(
+    directorio_base, "Datasets\FINAL", "Mediciones_simulaciones.csv"
+)
 
 combined_data_df = pd.read_csv(combined_data_path)
 simulations_data_df = pd.read_csv(simulations_data_path)
 
 
-X = combined_data_df[['Freq', 'PSD']].values
+X = combined_data_df[["Freq", "PSD"]].values
 mediciones_por_experiencia = 63 * 3 * 2
-y = np.repeat(simulations_data_df[['P1_Frecuencia', 'P1_RMS']].values, mediciones_por_experiencia, axis=0)
+y = np.repeat(
+    simulations_data_df[["P1_Frecuencia", "P1_RMS"]].values,
+    mediciones_por_experiencia,
+    axis=0,
+)
 
 
-
-
-
-
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(
+    X, y, test_size=0.2, random_state=42
+)
 
 
 X_train_tensor = torch.tensor(X_train, dtype=torch.float32)
@@ -54,8 +60,9 @@ class MLP(nn.Module):
         x = self.fc3(x)
         return x
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-print(f'Using device: {device}')
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
 
 
 model = MLP().to(device)
@@ -79,7 +86,7 @@ for epoch in range(epochs):
         optimizer.step()
 
     if epoch % 10 == 0:
-        print(f'Epoch {epoch+1}/{epochs}, Loss: {loss.item()}')
+        print(f"Epoch {epoch+1}/{epochs}, Loss: {loss.item()}")
 
 
 model.eval()
@@ -90,4 +97,4 @@ with torch.no_grad():
 
     predictions = model(X_test_tensor)
     test_loss = criterion(predictions, y_test_tensor)
-    print(f'Test Loss: {test_loss.item()}')
+    print(f"Test Loss: {test_loss.item()}")

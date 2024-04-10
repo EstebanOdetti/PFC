@@ -1,4 +1,3 @@
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -18,9 +17,9 @@ from torch.autograd import grad
 from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 
-mat_fname = 'Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
+mat_fname = "Datasets/mi_matriz_solo_diritletch_enriquesida.mat"
 mat = sio.loadmat(mat_fname)
-matriz_cargada = mat['dataset_matriz']
+matriz_cargada = mat["dataset_matriz"]
 
 
 num_casos, _, _, _ = matriz_cargada.shape
@@ -46,22 +45,13 @@ temp_train_tensor = torch.from_numpy(temp_train).float()
 temp_test_tensor = torch.from_numpy(temp_test).float()
 
 
-
-
-
-
-
-
-
-
-
 primeros_10_casos = temp_dirichlet_train_tensor[0:10]
 for i in range(primeros_10_casos.shape[0]):
     caso = primeros_10_casos[i]
     imagen = caso
     plt.subplot(2, 5, i + 1)
-    plt.imshow(imagen, cmap='hot')
-    plt.title(f'Caso {i+1}')
+    plt.imshow(imagen, cmap="hot")
+    plt.title(f"Caso {i+1}")
 plt.tight_layout()
 plt.show()
 
@@ -77,24 +67,33 @@ batch_size = 32
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 test_loader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True)
 
+
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
-        self.conv1 = nn.Conv2d(in_channels=1, out_channels=16, kernel_size=(3,3), stride=1, padding=1)
-        self.conv2 = nn.Conv2d(in_channels=1, out_channels=32, kernel_size=(3,3), stride=1, padding=1)
-        self.conv3 = nn.Conv2d(in_channels=1, out_channels=64, kernel_size=(3,3), stride=1, padding=1)
-        self.conv4 = nn.Conv2d(in_channels=1, out_channels=1, kernel_size=(3,3), stride=1, padding=1)
+        self.conv1 = nn.Conv2d(
+            in_channels=1, out_channels=16, kernel_size=(3, 3), stride=1, padding=1
+        )
+        self.conv2 = nn.Conv2d(
+            in_channels=1, out_channels=32, kernel_size=(3, 3), stride=1, padding=1
+        )
+        self.conv3 = nn.Conv2d(
+            in_channels=1, out_channels=64, kernel_size=(3, 3), stride=1, padding=1
+        )
+        self.conv4 = nn.Conv2d(
+            in_channels=1, out_channels=1, kernel_size=(3, 3), stride=1, padding=1
+        )
 
     def forward(self, x):
         x = F.leaky_relu(self.conv1(x))
         x = torch.sum(x, dim=1, keepdim=True)
-        
+
         x = F.leaky_relu(self.conv2(x))
         x = torch.sum(x, dim=1, keepdim=True)
-        
+
         x = F.leaky_relu(self.conv3(x))
         x = torch.sum(x, dim=1, keepdim=True)
-        
+
         x = self.conv4(x)
         out = torch.sum(x, dim=1, keepdim=True)
 
@@ -109,7 +108,6 @@ def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
         border_loss = F.mse_loss(output, target)
         loss_borde += border_loss
 
-
         if i == len(outputs) - 1:
             interior_loss = F.mse_loss(output[..., 1:-1, 1:-1], target[..., 1:-1, 1:-1])
             loss_interior += interior_loss
@@ -118,33 +116,34 @@ def custom_loss(outputs, target, ponderacion_interior, ponderacion_frontera):
 
     return ponderacion_frontera * loss_borde + ponderacion_interior * loss_interior
 
+
 def plot_feature_maps(feature_maps, num_cols=6):
     num_kernels = feature_maps.shape[1]
-    num_rows = 1+ num_kernels // num_cols
-    fig = plt.figure(figsize=(num_cols,num_rows))
+    num_rows = 1 + num_kernels // num_cols
+    fig = plt.figure(figsize=(num_cols, num_rows))
     for i in range(num_kernels):
-        ax1 = fig.add_subplot(num_rows,num_cols,i+1)
+        ax1 = fig.add_subplot(num_rows, num_cols, i + 1)
         ax1.imshow(feature_maps[0, i].cpu().detach().numpy())
-        ax1.axis('off')
+        ax1.axis("off")
         ax1.set_xticklabels([])
         ax1.set_yticklabels([])
 
     plt.subplots_adjust(wspace=0.1, hspace=0.1)
     plt.show()
 
-    
+
 def plot_kernels(tensor, num_cols=6):
-    if not tensor.ndim==4:
+    if not tensor.ndim == 4:
         raise Exception("assumes a 4D tensor")
-    if not tensor.shape[-1]==3:
+    if not tensor.shape[-1] == 3:
         raise Exception("last dim needs to be 3 to plot")
     num_kernels = tensor.shape[0]
-    num_rows = 1+ num_kernels // num_cols
-    fig = plt.figure(figsize=(num_cols,num_rows))
+    num_rows = 1 + num_kernels // num_cols
+    fig = plt.figure(figsize=(num_cols, num_rows))
     for i in range(tensor.shape[0]):
-        ax1 = fig.add_subplot(num_rows,num_cols,i+1)
+        ax1 = fig.add_subplot(num_rows, num_cols, i + 1)
         ax1.imshow(tensor[i].cpu().numpy())
-        ax1.axis('off')
+        ax1.axis("off")
         ax1.set_xticklabels([])
         ax1.set_yticklabels([])
 
@@ -152,11 +151,11 @@ def plot_kernels(tensor, num_cols=6):
     plt.show()
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 model = HeatPropagationNet().to(device)
-optimizer = optim.Adam(model.parameters(), lr = 0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
 ponderacion_interior = 0.6
@@ -168,14 +167,11 @@ for epoch in range(200):
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
 
-
         optimizer.zero_grad()
-
 
         output = model(inputs)
         loss = custom_loss(output, labels, ponderacion_interior, ponderacion_frontera)
         loss.backward()
         optimizer.step()
 
-
-    print('Epoch: %d, Loss: %.3f' % (epoch + 1, loss.item()))
+    print("Epoch: %d, Loss: %.3f" % (epoch + 1, loss.item()))

@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch
 
+
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
@@ -10,14 +11,11 @@ class HeatPropagationNet(nn.Module):
         self.conv1_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
         self.conv1_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
 
-
         self.conv2_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
         self.conv2_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
 
-
         self.conv3_1 = nn.Conv2d(1, 8, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(8, 1, kernel_size=3, padding=1)
-
 
     def forward(self, x):
 
@@ -40,6 +38,7 @@ class HeatPropagationNet(nn.Module):
         x6 = F.relu(self.conv3_1(y5))
         y6 = self.conv3_2(x6)
         return y1, y2, y3, y3, y4, y5, y6
+
 
 writer = SummaryWriter()
 

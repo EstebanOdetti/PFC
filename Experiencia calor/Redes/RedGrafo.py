@@ -29,9 +29,17 @@ y = torch.randint(0, 2, (49,))
 data = Data(x=x, edge_index=edge_index, y=y)
 
 
-def plot_graph(G, node_color='skyblue'):
+def plot_graph(G, node_color="skyblue"):
     pos = {node: (node % 7, node // 7) for node in G.nodes()}
-    nx.draw(G, pos, with_labels=True, node_color=node_color, font_weight='bold', node_size=700, font_size=18)
+    nx.draw(
+        G,
+        pos,
+        with_labels=True,
+        node_color=node_color,
+        font_weight="bold",
+        node_size=700,
+        font_size=18,
+    )
     plt.show()
 
 
@@ -78,4 +86,4 @@ model.eval()
 _, pred = model(data).max(dim=1)
 correct = float(pred.eq(data.y).sum().item())
 accuracy = correct / data.y.size(0)
-print(f'Accuracy: {accuracy}')
+print(f"Accuracy: {accuracy}")

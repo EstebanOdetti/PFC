@@ -15,8 +15,10 @@ from sklearn.preprocessing import StandardScaler
 directorio_base = os.path.dirname(__file__)
 
 
-matriz_total_data_path = os.path.join(directorio_base, 'Datasets', 'matriz_total.csv')
-simulations_data_path = os.path.join(directorio_base, 'Datasets\FINAL', 'Mediciones_simulaciones.csv')
+matriz_total_data_path = os.path.join(directorio_base, "Datasets", "matriz_total.csv")
+simulations_data_path = os.path.join(
+    directorio_base, "Datasets\FINAL", "Mediciones_simulaciones.csv"
+)
 
 
 matriz_total = pd.read_csv(matriz_total_data_path)
@@ -39,14 +41,28 @@ X_adelante = matriz_adelante.values.reshape(num_cases, 4, num_rows_per_case, 1)
 X_atras = matriz_atras.values.reshape(num_cases, 4, num_rows_per_case, 1)
 
 
-y = mediciones_simulaciones[['P1_Frecuencia', 'P1_RMS', 'P2_Frecuencia', 'P2_RMS']].values
+y = mediciones_simulaciones[
+    ["P1_Frecuencia", "P1_RMS", "P2_Frecuencia", "P2_RMS"]
+].values
 
 
-X_adelante_train, X_adelante_test, y_train, y_test = train_test_split(X_adelante, y, test_size=0.2, random_state=0, shuffle=False)
-X_atras_train, X_atras_test, _, _ = train_test_split(X_atras, y, test_size=0.2, random_state=0, shuffle=False)
+X_adelante_train, X_adelante_test, y_train, y_test = train_test_split(
+    X_adelante, y, test_size=0.2, random_state=0, shuffle=False
+)
+X_atras_train, X_atras_test, _, _ = train_test_split(
+    X_atras, y, test_size=0.2, random_state=0, shuffle=False
+)
 
 
-print(X_adelante_train.shape, X_adelante_test.shape, X_atras_train.shape, X_atras_test.shape, y_train.shape, y_test.shape)
+print(
+    X_adelante_train.shape,
+    X_adelante_test.shape,
+    X_atras_train.shape,
+    X_atras_test.shape,
+    y_train.shape,
+    y_test.shape,
+)
+
 
 class DualCNN(nn.Module):
     def __init__(self):
@@ -55,19 +71,11 @@ class DualCNN(nn.Module):
         self.conv1_delante = nn.Conv2d(4, 16, kernel_size=3, stride=1, padding=1)
         self.conv2_delante = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
 
-
-        
-
         self.conv1_atras = nn.Conv2d(4, 16, kernel_size=3, stride=1, padding=1)
         self.conv2_atras = nn.Conv2d(16, 32, kernel_size=3, stride=1, padding=1)
 
-
-
-
         self.fusion_conv1 = nn.Conv2d(64, 128, kernel_size=3, stride=1, padding=1)
         self.fusion_conv2 = nn.Conv2d(128, 256, kernel_size=3, stride=1, padding=1)
-
-
 
         salida_fusion_size = 256 * num_rows_per_case * 1
         print(salida_fusion_size)
@@ -79,17 +87,13 @@ class DualCNN(nn.Module):
         x1 = F.relu(self.conv1_delante(x_delante))
         x1 = F.relu(self.conv2_delante(x1))
 
-
         x2 = F.relu(self.conv1_atras(x_atras))
         x2 = F.relu(self.conv2_atras(x2))
 
-
         x = torch.cat((x1, x2), dim=1)
-
 
         x = F.relu(self.fusion_conv1(x))
         x = F.relu(self.fusion_conv2(x))
-
 
         x = torch.flatten(x, 1)
         x = self.fc(x)
@@ -122,16 +126,14 @@ for epoch in range(num_epochs):
         data_atras = X_atras_train_tensor[i].unsqueeze(0)
         labels = y_train_tensor[i].unsqueeze(0)
 
-
         outputs = model(data_delante, data_atras)
         loss = criterion(outputs, labels)
-
 
         optimizer.zero_grad()
         loss.backward()
         optimizer.step()
 
-    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}')
+    print(f"Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item()}")
 
 model.eval()
 predictions = []
@@ -147,7 +149,7 @@ predictions = np.vstack(predictions)
 
 mse = mean_squared_error(y_test, predictions)
 print("Mean Squared Error:", mse)
-features = ['P1_Frecuencia', 'P1_RMS', 'P2_Frecuencia', 'P2_RMS']
+features = ["P1_Frecuencia", "P1_RMS", "P2_Frecuencia", "P2_RMS"]
 mse_per_feature = {}
 
 for i, feature in enumerate(features):
@@ -157,31 +159,36 @@ for i, feature in enumerate(features):
 
 for feature, mse in mse_per_feature.items():
     print(f"MSE para {feature}: {mse}")
-    
+
 
 fig, axes = plt.subplots(2, 2, figsize=(12, 8))
-features = ['P1_Frecuencia', 'P1_RMS', 'P2_Frecuencia', 'P2_RMS']
+features = ["P1_Frecuencia", "P1_RMS", "P2_Frecuencia", "P2_RMS"]
 
 for i, feature in enumerate(features):
-    ax = axes[i//2, i%2]
+    ax = axes[i // 2, i % 2]
 
-    ax.scatter(range(len(y_test[:, i])), y_test[:, i], alpha=0.7, label='Ground Truth')
+    ax.scatter(range(len(y_test[:, i])), y_test[:, i], alpha=0.7, label="Ground Truth")
 
-    ax.scatter(range(len(predictions[:, i])), predictions[:, i], alpha=0.7, label='Predictions')
-    ax.set_xlabel('Samples')
+    ax.scatter(
+        range(len(predictions[:, i])), predictions[:, i], alpha=0.7, label="Predictions"
+    )
+    ax.set_xlabel("Samples")
     ax.set_ylabel(feature)
-    ax.set_title(f'Comparison for {feature}')
+    ax.set_title(f"Comparison for {feature}")
     ax.legend()
 
 plt.tight_layout()
 plt.show()
 
 
-
 ejemplo_x_delante = torch.randn(1, 4, num_rows_per_case, 1, dtype=torch.float32)
 ejemplo_x_atras = torch.randn(1, 4, num_rows_per_case, 1, dtype=torch.float32)
 
 
-
-torch.onnx.export(model, (ejemplo_x_delante, ejemplo_x_atras), 'model_CNN_EXPDINAMICA_mejorada.onnx',
-                  input_names=['x_delante_input', 'x_atras_input'], output_names=['output'])
+torch.onnx.export(
+    model,
+    (ejemplo_x_delante, ejemplo_x_atras),
+    "model_CNN_EXPDINAMICA_mejorada.onnx",
+    input_names=["x_delante_input", "x_atras_input"],
+    output_names=["output"],
+)

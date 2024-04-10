@@ -14,9 +14,10 @@ from torch.utils.data import Dataset, DataLoader
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.metrics import r2_score
 from sklearn.model_selection import KFold
-mat_fname = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
+
+mat_fname = "C:/Users/Usuario/Desktop/Proyectos/PyTorch/PFC/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat"
 mat = sio.loadmat(mat_fname)
-matriz_cargada = mat['dataset_matriz']
+matriz_cargada = mat["dataset_matriz"]
 
 
 num_casos, _, _, _ = matriz_cargada.shape
@@ -48,73 +49,68 @@ train_dataset = TensorDataset(temp_train_tensor, temp_train_tensor)
 test_dataset = TensorDataset(temp_test_tensor, temp_test_tensor)
 train_dataset_dirichlet = TensorDataset(temp_train_tensor_dirichlet, temp_train_tensor)
 test_dataset_dirichlet = TensorDataset(temp_test_tensor_dirichlet, temp_test_tensor)
+
+
 class HeatPropagationNet(nn.Module):
     def __init__(self):
         super(HeatPropagationNet, self).__init__()
-        
 
         self.conv1_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv1_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
         self.leaky_relu = nn.LeakyReLU(0.5)
 
-
         self.conv2_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv2_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
-
 
         self.conv3_1 = nn.Conv2d(1, 16, kernel_size=3, padding=1)
         self.conv3_2 = nn.Conv2d(16, 1, kernel_size=3, padding=1)
 
     def forward(self, x):
 
-        x1 = self.leaky_relu(self.conv1_1(x))  
-        y1 = self.leaky_relu(self.conv1_2(x1))  
-        
+        x1 = self.leaky_relu(self.conv1_1(x))
+        y1 = self.leaky_relu(self.conv1_2(x1))
 
         x2 = self.leaky_relu(self.conv1_1(y1))
         y2 = self.leaky_relu(self.conv1_2(x2))
-        
 
         x3 = self.leaky_relu(self.conv2_1(y2))
         y3 = self.leaky_relu(self.conv2_2(x3))
-        
 
         x4 = self.leaky_relu(self.conv2_1(y3))
         y4 = self.leaky_relu(self.conv2_2(x4))
-        
 
         x5 = self.leaky_relu(self.conv3_1(y4))
         y5 = self.leaky_relu(self.conv3_2(x5))
-        
 
         x6 = self.leaky_relu(self.conv3_1(y5))
         y6 = self.leaky_relu(self.conv3_2(x6))
-        
+
         return y1, y2, y3, y4, y5, y6
-    
+
+
 def custom_loss(outputs, target):
     loss_tot = 0
-    
+
     for output in outputs:
-        loss_tot+=F.mse_loss(output, target)
+        loss_tot += F.mse_loss(output, target)
 
     return loss_tot
 
 
-writer = SummaryWriter('runs/experiment_1')
+writer = SummaryWriter("runs/experiment_1")
 
 
-device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 model = HeatPropagationNet().to(device)
-optimizer = optim.Adam(model.parameters(), lr = 0.001)
+optimizer = optim.Adam(model.parameters(), lr=0.001)
 
 
 k_folds = 5
 kfold = KFold(n_splits=k_folds, shuffle=True)
 
-best_val_loss = float('inf')
+best_val_loss = float("inf")
 best_model_state = None
 test_loss_values = []
 val_loss_values = []
@@ -123,17 +119,19 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
     train_subset = torch.utils.data.Subset(train_dataset_dirichlet, train_index)
     val_subset = torch.utils.data.Subset(train_dataset_dirichlet, val_index)
 
-
     trainloader = torch.utils.data.DataLoader(train_subset, batch_size=32)
     valloader = torch.utils.data.DataLoader(val_subset, batch_size=32)
 
-
     model = HeatPropagationNet().to(device)
-    optimizer = optim.Adam(model.parameters(), lr = 0.001)
-
+    optimizer = optim.Adam(model.parameters(), lr=0.001)
 
     for epoch in range(100):
-        train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = 0.0, 0.0, 0.0, 0.0 
+        train_loss_total, train_loss_ultima, val_loss_total, val_loss_ultima = (
+            0.0,
+            0.0,
+            0.0,
+            0.0,
+        )
         num_batches_train, num_batches_val = 0, 0
         for inputs, labels in trainloader:
             inputs, labels = inputs.to(device), labels.to(device)
@@ -142,7 +140,7 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
             outputs_all = outputs[:-1]
             output_final = outputs[-1:]
             loss_final = custom_loss(output_final, labels)
-            loss_all = custom_loss(outputs_all, labels)  + loss_final
+            loss_all = custom_loss(outputs_all, labels) + loss_final
             loss_all.backward()
             optimizer.step()
             train_loss_total += loss_all.item()
@@ -169,22 +167,26 @@ for fold, (train_index, val_index) in enumerate(kfold.split(train_dataset_dirich
         val_loss_ultima /= num_batches_val
         test_loss_values.append(train_loss_ultima)
         val_loss_values.append(val_loss_ultima)
-        
-        print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}')
-        print(f'Fold {fold}, Epoch {epoch+1}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}')
-      
+
+        print(
+            f"Fold {fold}, Epoch {epoch+1}, Training Loss (total): {train_loss_total}, Validation Loss: {val_loss_total}"
+        )
+        print(
+            f"Fold {fold}, Epoch {epoch+1}, Training Loss (ultima capa): {train_loss_ultima}, Validation Loss: {val_loss_ultima}"
+        )
+
 
 plt.plot(test_loss_values)
-plt.xlabel('Epoca')
-plt.ylabel('Perdida de entrenamiento')
-plt.title('Perdida de entrenamiento por Epoca')
+plt.xlabel("Epoca")
+plt.ylabel("Perdida de entrenamiento")
+plt.title("Perdida de entrenamiento por Epoca")
 plt.grid(True)
 plt.show()
 
 plt.plot(val_loss_values)
-plt.xlabel('Epoca')
-plt.ylabel('Perdida de Validación')
-plt.title('Perdida de Validación por Epoca')
+plt.xlabel("Epoca")
+plt.ylabel("Perdida de Validación")
+plt.title("Perdida de Validación por Epoca")
 plt.grid(True)
 plt.show()
 
@@ -210,9 +212,7 @@ with torch.no_grad():
         inputs, labels = data
         inputs, labels = inputs.to(device), labels.to(device)
 
-
         outputs = model(inputs)
-
 
         loss = custom_loss(outputs, labels)
         total_loss += loss.item()
@@ -221,8 +221,7 @@ with torch.no_grad():
 
 mean_loss = total_loss / num_batches
 
-print('Mean Loss on Test Set:', mean_loss)
-
+print("Mean Loss on Test Set:", mean_loss)
 
 
 fig, axs = plt.subplots(2, 2, figsize=(10, 20))
@@ -230,15 +229,13 @@ fig, axs = plt.subplots(2, 2, figsize=(10, 20))
 
 for j in range(2):
 
-    im_output = axs[j, 0].imshow(outputs[-1][j, 0].cpu().numpy(), cmap='hot')
+    im_output = axs[j, 0].imshow(outputs[-1][j, 0].cpu().numpy(), cmap="hot")
     axs[j, 0].set_title("Output de la red")
-    fig.colorbar(im_output, ax=axs[j, 0], orientation='vertical')
+    fig.colorbar(im_output, ax=axs[j, 0], orientation="vertical")
 
-
-    im_label = axs[j, 1].imshow(labels[j, 0].cpu().numpy(), cmap='hot')
+    im_label = axs[j, 1].imshow(labels[j, 0].cpu().numpy(), cmap="hot")
     axs[j, 1].set_title("Ground Truth")
-    fig.colorbar(im_label, ax=axs[j, 1], orientation='vertical')
-    
+    fig.colorbar(im_label, ax=axs[j, 1], orientation="vertical")
 
 
 fig.tight_layout(pad=5.0)
@@ -255,10 +252,10 @@ ground_truth = labels[:, 0].cpu().numpy().flatten()
 red_output = outputs[-1][:, 0].cpu().numpy().flatten()
 
 
-plt.scatter(ground_truth, red_output, c='blue', label='Predicciones')
+plt.scatter(ground_truth, red_output, c="blue", label="Predicciones")
 
 
-plt.scatter(ground_truth, ground_truth, c='red', label='Ground Truth', marker='x')
+plt.scatter(ground_truth, ground_truth, c="red", label="Ground Truth", marker="x")
 
 
 plt.xlabel("Ground Truth")
@@ -272,8 +269,3 @@ plt.legend()
 
 
 plt.show()
-
-
-
-
-

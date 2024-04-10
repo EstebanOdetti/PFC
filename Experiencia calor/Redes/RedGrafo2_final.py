@@ -4,7 +4,9 @@ import numpy as np
 import scipy.io as sio
 import networkx as nx
 import torch.nn.functional as F
-from torch_geometric.nn import GCNConv, SAGEConv, ChebConv, GraphConv, ResGatedGraphConv, TAGConv, ARMAConv, ClusterGCNConv, GeneralConv, HGTConv
+from torch_geometric.nn import (
+    ClusterGCNConv,
+)
 from torch_geometric.data import DataLoader
 import torch.optim as optim
 import matplotlib.pyplot as plt
@@ -13,9 +15,9 @@ import torch.nn as nn
 from sklearn.model_selection import KFold
 
 
-mat_fname = 'C:/Users/Usuario/Desktop/Proyectos/PyTorch/PyThorch Test/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat'
+mat_fname = "C:/Users/Usuario/Desktop/Proyectos/PyTorch/PFC/Experiencia calor/Datasets/mi_matriz_solo_diritletch_enriquesida.mat"
 mat = sio.loadmat(mat_fname)
-matriz_cargada = mat['dataset_matriz']
+matriz_cargada = mat["dataset_matriz"]
 
 
 num_casos, _, _, _ = matriz_cargada.shape
@@ -28,11 +30,12 @@ num_entrenamiento = int(total_casos * porcentaje_entrenamiento)
 
 
 selected_channels = [0, 1, 12, 17]
-train_data_selected = matriz_cargada_mezclada[:num_entrenamiento, :, :, selected_channels]
-test_data_selected = matriz_cargada_mezclada[num_entrenamiento:, :, :, selected_channels]
-
-
-
+train_data_selected = matriz_cargada_mezclada[
+    :num_entrenamiento, :, :, selected_channels
+]
+test_data_selected = matriz_cargada_mezclada[
+    num_entrenamiento:, :, :, selected_channels
+]
 
 
 node_features = train_data_selected[0]
@@ -49,13 +52,13 @@ edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous()
 
 
 for i, (x, y) in enumerate(product(range(7), range(7))):
-    G.nodes[i]['features'] = node_features[x, y]
+    G.nodes[i]["features"] = node_features[x, y]
 
 
-pos = {i: (G.nodes[i]['features'][0], G.nodes[i]['features'][1]) for i in G.nodes}
+pos = {i: (G.nodes[i]["features"][0], G.nodes[i]["features"][1]) for i in G.nodes}
 
 
-colors = [G.nodes[i]['features'][3] for i in G.nodes]
+colors = [G.nodes[i]["features"][3] for i in G.nodes]
 
 temp_train_dirichlet = matriz_cargada_mezclada[:num_entrenamiento, :, :, 12]
 temp_test_dirichlet = matriz_cargada_mezclada[num_entrenamiento:, :, :, 12]
@@ -77,20 +80,22 @@ vmax = max(colors)
 plt.figure(figsize=(12, 6))
 
 
-label_dict = {i: f'{val:.2f}' for i, val in enumerate(colors)}
+label_dict = {i: f"{val:.2f}" for i, val in enumerate(colors)}
 
 plt.subplot(1, 2, 1)
 
 nx.draw(G, pos, node_color=colors, cmap=plt.cm.Reds, vmin=vmin, vmax=vmax)
-nx.draw_networkx_labels(G, pos, labels=label_dict, font_size=8, verticalalignment='bottom')
-plt.title('Grafo de temperatura')
+nx.draw_networkx_labels(
+    G, pos, labels=label_dict, font_size=8, verticalalignment="bottom"
+)
+plt.title("Grafo de temperatura")
 
 plt.subplot(1, 2, 2)
 primer_caso = temp_train_tensor[0]
 imagen = primer_caso[:, :]
 
-plt.imshow(imagen, cmap='hot', origin='lower', vmin=vmin, vmax=vmax)
-plt.title(f'Caso 1 del dataset')
+plt.imshow(imagen, cmap="hot", origin="lower", vmin=vmin, vmax=vmax)
+plt.title(f"Caso 1 del dataset")
 
 plt.tight_layout()
 plt.colorbar()
@@ -109,8 +114,14 @@ train_y = train_data_selected_tensor[:, :, :, 3].reshape(-1, 49)
 test_y = test_data_selected_tensor[:, :, :, 3].reshape(-1, 49)
 
 
-train_data_list = [Data(x=train_x[i], edge_index=edge_index, y=train_y[i]) for i in range(train_x.shape[0])]
-test_data_list = [Data(x=test_x[i], edge_index=edge_index, y=test_y[i]) for i in range(test_x.shape[0])]
+train_data_list = [
+    Data(x=train_x[i], edge_index=edge_index, y=train_y[i])
+    for i in range(train_x.shape[0])
+]
+test_data_list = [
+    Data(x=test_x[i], edge_index=edge_index, y=test_y[i])
+    for i in range(test_x.shape[0])
+]
 
 
 class GraphNetwork(torch.nn.Module):
@@ -131,6 +142,7 @@ class GraphNetwork(torch.nn.Module):
         x = self.conv4(x, edge_index)
         x = F.leaky_relu(x, 0.1)
         return x.view(-1)
+
 
 model = GraphNetwork()
 
@@ -157,10 +169,9 @@ for fold, (train_indices, val_indices) in enumerate(kfold.split(train_data_list)
 
     train_data = [train_data_list[i] for i in train_indices]
     val_data = [train_data_list[i] for i in val_indices]
-    
+
     train_loader = DataLoader(train_data, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=batch_size, shuffle=False)
-
 
     model = GraphNetwork()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate)
@@ -192,26 +203,27 @@ for fold, (train_indices, val_indices) in enumerate(kfold.split(train_data_list)
                 loss = criterion(outputs, batch_y)
                 val_epoch_loss += loss.item()
                 val_batch_count += 1
-        
+
         val_epoch_loss /= val_batch_count
         val_loss_values.append(val_epoch_loss)
-        
-        print(f"Fold [{fold+1}/5], Epoch [{epoch+1}/{num_epochs}], Training Loss: {epoch_loss:.4f}, Validation Loss: {val_epoch_loss:.4f}")
 
+        print(
+            f"Fold [{fold+1}/5], Epoch [{epoch+1}/{num_epochs}], Training Loss: {epoch_loss:.4f}, Validation Loss: {val_epoch_loss:.4f}"
+        )
 
 
 plt.plot(val_loss_values)
-plt.xlabel('Epoca')
-plt.ylabel('Perdida de Validación')
-plt.title('Perdida de Validación por Epoca')
+plt.xlabel("Epoca")
+plt.ylabel("Perdida de Validación")
+plt.title("Perdida de Validación por Epoca")
 plt.grid(True)
 plt.show()
 
 
 plt.plot(train_loss_values)
-plt.xlabel('Epoca')
-plt.ylabel('Perdida de entrenamiento')
-plt.title('Perdida de entrenamiento por Epoca')
+plt.xlabel("Epoca")
+plt.ylabel("Perdida de entrenamiento")
+plt.title("Perdida de entrenamiento por Epoca")
 plt.grid(True)
 plt.show()
 
@@ -222,7 +234,7 @@ with torch.no_grad():
     predictions = []
     for batch in test_loader:
 
-        batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y        
+        batch_x, batch_edge_index, batch_y = batch.x, batch.edge_index, batch.y
 
         outputs = model(batch_x, batch_edge_index)
         predictions.append(outputs)
@@ -234,27 +246,26 @@ with torch.no_grad():
 
 predictions_tensor = torch.cat(predictions).reshape(-1, 7, 7)
 
-model = model.to('cpu')
-batch_x = batch_x.to('cpu')
-batch_edge_index = batch_edge_index.to('cpu')
+model = model.to("cpu")
+batch_x = batch_x.to("cpu")
+batch_edge_index = batch_edge_index.to("cpu")
 
 N = 2
 
-plt.figure(figsize=(26, 5*N)) 
+plt.figure(figsize=(26, 5 * N))
 
 for i in range(min(N, len(test_data_list))):
 
-    plt.subplot(N, 2, 2*i + 1)
+    plt.subplot(N, 2, 2 * i + 1)
     ground_truth = test_y[i].reshape(7, 7).cpu().numpy()
-    plt.imshow(ground_truth, cmap='hot')
-    plt.title(f'Caso {i+1} - Ground Truth', fontsize=10)
+    plt.imshow(ground_truth, cmap="hot")
+    plt.title(f"Caso {i+1} - Ground Truth", fontsize=10)
     plt.colorbar()
-    
 
-    plt.subplot(N, 2, 2*i + 2)
+    plt.subplot(N, 2, 2 * i + 2)
     prediction = predictions_tensor[i].cpu().numpy()
-    plt.imshow(prediction, cmap='hot')
-    plt.title(f'Caso {i+1} - Predicción', fontsize=10)
+    plt.imshow(prediction, cmap="hot")
+    plt.title(f"Caso {i+1} - Predicción", fontsize=10)
     plt.colorbar()
 
 plt.tight_layout()
@@ -267,9 +278,9 @@ test_y_flat = torch.cat([batch.y for batch in test_loader]).view(-1).cpu().numpy
 
 plt.figure(figsize=(10, 10))
 
-plt.scatter(test_y_flat, test_y_flat, c='red', label='Ground Truth', marker='x')
+plt.scatter(test_y_flat, test_y_flat, c="red", label="Ground Truth", marker="x")
 
-plt.scatter(test_y_flat, predictions_flat, c='blue', label='Salida de la red')
+plt.scatter(test_y_flat, predictions_flat, c="blue", label="Salida de la red")
 
 
 plt.xlabel("Ground Truth")
@@ -286,7 +297,13 @@ plt.show()
 
 
 input_tensor, _ = test_loader.dataset[0]
-input_example = input_tensor.unsqueeze(0).to('cpu')
+input_example = input_tensor.unsqueeze(0).to("cpu")
 
 
-torch.onnx.export(model, input_example, 'model_grafo_mejorada.onnx', input_names=['input'], output_names=['output'])
+torch.onnx.export(
+    model,
+    input_example,
+    "model_grafo_mejorada.onnx",
+    input_names=["input"],
+    output_names=["output"],
+)
