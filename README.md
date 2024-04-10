@@ -1,4 +1,4 @@
-# Nombre del Proyecto
+# Desarrollo de arquitecturas basadas en redes neuronales artificiales para aproximar la solución de las ecuaciones de transferencia de calor y dinámica estructural.
 
 ![Licencia](https://img.shields.io/badge/license-MIT-green) ![Python](https://img.shields.io/badge/made%20with-Python-blue.svg) ![Versión](https://img.shields.io/badge/version-1.0.0-blue)
 
