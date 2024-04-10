@@ -7,10 +7,10 @@ from torch.utils.data import DataLoader, TensorDataset
 import torch.nn.functional as F
 import matplotlib.pyplot as plt
 
-# Directorio base donde se encuentran tus archivos FFT y GMM
-directorio_base = os.path.dirname(__file__)  # Obtener el directorio del script actual
 
-# Leer y preparar el conjunto de datos
+directorio_base = os.path.dirname(__file__)
+
+
 file_path = os.path.join(directorio_base, 'Datasets', 'dataset_avanzado_random_en_lista.csv')
 data = pd.read_csv(file_path, header=None)
 data.columns = [
@@ -18,15 +18,15 @@ data.columns = [
     'front_target_freq', 'front_target_ten'
 ]
 wheel_data = data[['front_wheel_freq', 'front_wheel_psdx', 'front_wheel_psdy', 'front_wheel_psdz']].to_numpy()
-targets = data[['front_target_ten']].to_numpy()[::30]  # Seleccionar solo la última columna (Dimensión 2)
+targets = data[['front_target_ten']].to_numpy()[::30]
 
 wheel_data = wheel_data.reshape(-1, 30, 4)
 
-# Convertir los datos a tensores de PyTorch
+
 wheel_data = torch.tensor(wheel_data, dtype=torch.float32).unsqueeze(1)
 targets = torch.tensor(targets, dtype=torch.float32)
 
-# Definir el modelo
+
 class CNNModel(nn.Module):
     def __init__(self):
         super().__init__()
@@ -35,7 +35,7 @@ class CNNModel(nn.Module):
         self.combined_conv = nn.Conv2d(64, 1, (3, 3), padding=1)
         
         self.flatten = nn.Flatten()
-        self.fc = nn.Linear(120, 1)  # Salida de una sola dimensión (Dimensión 2)
+        self.fc = nn.Linear(120, 1)
 
     def forward(self, wheel_data):
         x = self.conv1(wheel_data)
@@ -45,31 +45,31 @@ class CNNModel(nn.Module):
         output = self.fc(x)
         return output
 
-# Crear el modelo
+
 model = CNNModel()
 
-# Definir el criterio de pérdida y el optimizador
+
 criterion = nn.MSELoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
 
-# Crear DataLoader
+
 dataset = TensorDataset(wheel_data, targets)
 dataloader = DataLoader(dataset, batch_size=5, shuffle=True)
 
-# Entrenar el modelo
+
 n_epochs = 100
 for epoch in range(n_epochs):
     running_loss = 0.0
     for i, (wheel_data_batch, targets_batch) in enumerate(dataloader):
         optimizer.zero_grad()
         
-        # Calcular la salida del modelo
+
         outputs = model(wheel_data_batch)
         
-        # Calcular la pérdida
+
         loss = criterion(outputs, targets_batch)
         
-        # Retropropagar el error y actualizar los pesos del modelo
+
         loss.backward()
         optimizer.step()
         
@@ -77,24 +77,24 @@ for epoch in range(n_epochs):
     
     print(f'Epoch {epoch + 1}, Loss: {running_loss / len(dataloader)}')
 
-# Evaluar el modelo
+
 model.eval()
 with torch.no_grad():
     outputs = model(wheel_data)
     loss = criterion(outputs, targets)
     print('Loss: ', loss.item())
 
-# Evaluar el modelo en todo el conjunto de datos
+
 model.eval()
 with torch.no_grad():
 
     outputs = model(wheel_data)
 
-# Convertir los tensores de PyTorch a matrices NumPy
+
 outputs = outputs.numpy()
 targets = targets.numpy()
 
-# Crear un scatter plot para la Dimensión 2
+
 plt.figure(figsize=(8, 6))
 plt.scatter(targets, targets, label='Objetivos reales (tension)', c='blue')
 plt.scatter(outputs, outputs, label='Predicciones (tension)', c='red')

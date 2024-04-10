@@ -5,44 +5,44 @@ from torch_geometric.data import Data
 import networkx as nx
 import matplotlib.pyplot as plt
 
-# Crear un grafo 7x7 usando NetworkX
+
 G = nx.grid_2d_graph(7, 7)
 
-# Convertir nodos a índices enteros únicos
+
 node_mapping = {node: i for i, node in enumerate(G.nodes())}
 G = nx.relabel_nodes(G, node_mapping)
 
-# Construir edge_index
+
 edge_index = torch.tensor(list(G.edges), dtype=torch.long).t().contiguous()
 
-# Crear características aleatorias para los nodos
-random_features = torch.randn(49, 16)  # 49 nodos, 16 características por nodo
 
-# Añadir coordenadas espaciales como características
+random_features = torch.randn(49, 16)
+
+
 coordinates = torch.tensor([(i // 7, i % 7) for i in range(49)], dtype=torch.float)
-x = torch.cat([random_features, coordinates], dim=1)  # 49 nodos, 18 características por nodo
+x = torch.cat([random_features, coordinates], dim=1)
 
-# Crear etiquetas aleatorias para los nodos
-y = torch.randint(0, 2, (49,))  # 49 nodos, etiquetas 0 o 1
 
-# Crear objeto Data de PyTorch Geometric
+y = torch.randint(0, 2, (49,))
+
+
 data = Data(x=x, edge_index=edge_index, y=y)
 
-# Dibujar el grafo
+
 def plot_graph(G, node_color='skyblue'):
     pos = {node: (node % 7, node // 7) for node in G.nodes()}
     nx.draw(G, pos, with_labels=True, node_color=node_color, font_weight='bold', node_size=700, font_size=18)
     plt.show()
 
-# Convertir el grafo de PyTorch Geometric a NetworkX para la visualización
+
 G_nx = nx.Graph()
 G_nx.add_edges_from(edge_index.t().numpy())
 plot_graph(G_nx)
 
-# Crear objeto Data de PyTorch Geometric
+
 data = Data(x=x, edge_index=edge_index, y=y)
 
-# Definir el modelo de la Red Neuronal de Grafo
+
 class Net(torch.nn.Module):
     def __init__(self):
         super(Net, self).__init__()
@@ -59,7 +59,7 @@ class Net(torch.nn.Module):
         x = self.fc(x)
         return F.log_softmax(x, dim=1)
 
-# Entrenar el modelo
+
 model = Net()
 optimizer = torch.optim.Adam(model.parameters(), lr=0.01)
 criterion = torch.nn.NLLLoss()
@@ -73,7 +73,7 @@ for epoch in range(200):
     optimizer.step()
     print(f"Epoch {epoch+1}, Loss: {loss.item()}")
 
-# Evaluar el modelo
+
 model.eval()
 _, pred = model(data).max(dim=1)
 correct = float(pred.eq(data.y).sum().item())

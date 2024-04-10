@@ -23,11 +23,6 @@ nodos_Sur=retornar_nodos_sur();
 nodos_Oeste=retornar_nodos_oeste();
 nodos_Este=retornar_nodos_este();
 
-
-
-##[DIR_2,hay_condicion_DIR,NEU_2,hay_condicion_NEU,ROB_2,hay_condicion_ROB,cant_casos_sur,cant_casos_este,cant_casos_norte,cant_casos_oeste]= retornar_vectores_borde(tipo_borde,DIR_values,NEU_values,ROB_values,nodos_Norte,nodos_Sur,nodos_Oeste,nodos_Este);
-
-
 ## Anotacion para las condiciones
 ##        S = neighb(P, 1);
 ##        E = neighb(P, 2);
@@ -49,16 +44,6 @@ G_values = [300:100:600];
 ##CONDUCTIVIDAD TERMICA ALUMINIO	237
 k_values = [237];
 c_values = [0];
-##EN EL EXPERIMENTO DEL PROFE LA SUR ESTE Y NORTE NEUMANN; OESTE DIRITLETCH
-##EL SUR Y ESTE NO VARIA; EL NORTE Y OESTE SI VARIA
-##tipo_borde=[Borde_sur,Borde_este,Borde_norte,Borde_oeste]
-#EXPRIENCIA INICIAL
-#tipo_borde=[2,2,2,1];
-#Expreciencia conmutar este oeste
-#tipo_borde=[2,1,2,2];
-#Expreciencia conmutar norte sur
-#tipo_borde=[2,2,2,1];
-#Expreciencia conmutar NS_EO
 tipo_borde=[1,1,1,1];
 #EXPRIENCIA INICIAL
 % Número de nodos en el sur
@@ -90,17 +75,7 @@ dataset_matriz=zeros(cant_total,7,7,20);
 display(size(dataset_matriz))
 contador=1;
 
-##REcorremos todos los nodos asi determinar cual es interior y cual frontera
-##RECORRA TODOS LOS NODOS Y LAS FRONTERAS
 for i = 1:length(xnode(:,1))
-##  is_present_NEU = 0;
-##  is_present_DIR = 0;
-##  is_present_NEU = ismember(i, NEU(:, 1));
-##  columna_NEU(i,1)=is_present_NEU;
-##  is_present_DIR = ismember(i, DIR(:, 1));
-##  columna_DIR(i,1)=is_present_DIR;
-##  es_borde=or(is_present_NEU,is_present_DIR);
-##  borde(i,:) = [not(es_borde) ; es_borde##  is_present_NEU = 0;
 is_present_al_SUR = 0;
 is_present_al_ESTE = 0;
 is_present_al_NORTE = 0;
@@ -116,8 +91,6 @@ borde(i,1) = not(es_borde);
 borde(i,2) = es_borde;
 end
 
-##for i = 1:length(DIR_values)
-##    for j = 1:length(NEU_values)
 
 for i=1:length(valores_sur)
                 if (tipo_borde(1,1)==1)
@@ -180,17 +153,10 @@ for i=1:length(valores_sur)
             for l = 1:length(k_values)
               for k = 1:length(G_values)
                 for m = 1:length(c_values)
-##                    DIR(:,2) = ones(size(DIR,1),1)*DIR_values(i);
-##                    NEU(:, 2) = ones(size(NEU,1),1)*NEU_values(j);
-##                    ROB = ROB_values;
-## DIR=DIR
-## NEU=NEU
                     model.G = [ones(size(model.G,1),1)*G_values(k)];
                     model.c = [ones(size(model.G,1),1)*c_values(m)];
                     model.k = [ones(size(model.G,1),1)*k_values(l)];
-                    [PHI_temp, Q_temp] = main_proyecto(xnode, icone, DIR, NEU, ROB, model.G, model.k, model.c);
-                    #display("caso calculado")
-                    ##TEnemos que controlar si hay una condicion diritletch
+                    [PHI_temp, Q_temp] = main_proyecto(xnode, icone, DIR, NEU, ROB, model.G, model.k, model.c);                 
                   if(hay_condicion_DIR)
                         DIR_indices = DIR(:,1);
                         DIR_values = DIR(:,2);
@@ -210,22 +176,12 @@ for i=1:length(valores_sur)
                         columna_NEU(NEU_indices,2) = NEU_values;
                         mascara_tipos_bordes_dataset(sub2ind(size(mascara_tipos_bordes_dataset), NEU_indices, NEU(:,3))) = 1;
                     endif
-##          dataset = [xnode,borde,columna_DIR,columna_NEU];
-##xnode[x,y] borde[interior, frontera] mascarara_tipos[norte, sur, este, oeste] no se si es ese orde
                     salida_vector=[xnode,borde,model.k,model.G,model.c,mascara_tipos_bordes_dataset,columna_DIR,columna_NEU,columna_ROB,PHI_temp,Q_temp];
-                    dataset = [dataset;salida_vector];
-                    ##dataset_matriz=[dataset_matriz;reordenar_a_matriz(salida_vector,7)];
+                    dataset = [dataset;salida_vector];                   
                     dataset_matriz(contador,:,:,:)=[reordenar_a_matriz(salida_vector,7)];
                     contador=contador+1;
-
-##                    salida_vector_un_elemento=full(dataset(1,:))'
-##                    salida_matriz_un_elemento=full(dataset_matriz(1,1,:))
                 endfor
             endfor
-##        end
-##    end
-##    display("salio del for mas lejano")
-##end
         endfor
       endfor
     endfor
@@ -233,11 +189,5 @@ for i=1:length(valores_sur)
   endfor
   display("for sur")
 endfor
-#dataset_matriz=dataset_matriz
 save("-v6",'mi_matriz_solo_diritletch_enriquesida.mat', 'dataset_matriz')
 save("-v6",'mi_vector_solo_diritletch_enriquesida.mat', 'dataset')
-#csvwrite("datos_sinteticos_co.csv",dataset)
-#csvwrite("datos_sinteticos_matriz_ver_7.csv",dataset)
-
-
-

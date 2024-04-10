@@ -28,28 +28,28 @@ from collections import OrderedDict
 
 datos_totales = pd.read_csv(r'C:\Users\Usuario\Desktop\Proyectos\PyTorch\PyThorch Test\Datasets\datos_sinteticos_ver_3.csv')
 
-# Seleccionamos las columnas deseadas
+
 columnas_deseadas = ["x", "y", "borde", "model.k", "model.G", "model.c", "BN", "BS", "Be", "Bo", "columna_DIR1", "columna_DIR2", "columna_NEU1", "columna_NEU2", "columna_ROB1", "columna_ROB2"]
 datos = datos_totales[columnas_deseadas]
 
-# Seleccionamos la columna PHI_temp
+
 datos_PHI_temp = datos_totales["PHI_temp"]
 
-# Seleccionamos las columnas Q_tempx y Q_tempy
+
 datos_Q_tempx = datos_totales["Q_tempx"]
 datos_Q_tempy = datos_totales["Q_tempy"]
 
-# Usamos train test split para hacer esquema 80-20
+
 datos_tr, datos_ts, salida_esperada_tr, salida_esperada_ts = train_test_split(datos, datos_PHI_temp, test_size=0.2,
                                                                               random_state=0)
 
 
-#primero a numpy
+
 datos_tr = datos_tr.to_numpy()
 datos_ts =datos_ts.to_numpy()
 salida_esperada_tr =salida_esperada_tr.to_numpy()
 salida_esperada_ts =salida_esperada_ts.to_numpy()
-#usamos StandardScaler para normalizar los datos!
+
 scaler = StandardScaler()
 scaler = scaler.fit(datos_tr)
 datos_tr = scaler.transform(datos_tr)
@@ -96,21 +96,21 @@ class NetMLP(nn.Module):
     def forward(self, x):
         return self.network(x)
 
-# clfRFR = RandomForestRegressor(n_estimators=1000, n_jobs=-1, random_state=0)
-# CV_RFR = cross_val_score(clfRFR, datos_tr, salida_esperada_tr, cv=5, scoring='r2')
-# clfRFR.fit(datos_tr, salida_esperada_tr)
-# print('RFR cross-validation score sin optimizacion: ')
-# print('R2 score of ' + str(round(CV_RFR.mean(), 2)) + ' with a standard deviation of ' + str(round(CV_RFR.std(), 2)))
 
-# y_pred_RFC = clfRFR.predict(datos_ts)
-# r2 = r2_score(salida_esperada_ts, y_pred_RFC)
-# print("R2 score:", r2)
-# Dispositivo en que se ejecturá el modelo: 'cuda:0' para GPU y 'cpu' para CPU
+
+
+
+
+
+
+
+
+
 device = torch.device('cuda:0')
 
-# Creamos un loader iterable indicandole que debe leer los datos a partir de
-# del dataset creado en el paso anterior. Este objeto puede ser iterado
-# y nos devuelve de a un batch (x, y).
+
+
+
 
 salida_esperada_tr = torch.tensor(salida_esperada_tr).unsqueeze(1)
 dataset = TensorDataset(torch.from_numpy(datos_tr).clone().float(), salida_esperada_tr.float())
@@ -121,14 +121,14 @@ datos_ts = torch.tensor(datos_ts).float()
 salida_esperada_tr = torch.tensor(salida_esperada_tr).float()
 salida_esperada_ts = torch.tensor(salida_esperada_ts).float()
 
-# Entrenar la red neuronal 
+
 net = NetMLP(16,20,1)
 net = net.to(device)
 optimizer = optim.Adam(net.parameters(), lr=0.0001)
 criterion =nn.MSELoss()
 loss_list = []
 epoch_loss_list = []  
-# Existing code
+
 for i in range(200):
     total_loss = 0.0
     for x, y in loader:
@@ -139,19 +139,19 @@ for i in range(200):
         loss.backward()
         optimizer.step()
 
-        # Me guardo el valor actual de la función de pérdida para luego graficarlo
+
         loss_list.append(loss.data.item())
 
-        # Acumulo la loss del minibatch
+
         total_loss += loss.item() * y.size(0)
 
-    # Normalizo la loss total   
+
     total_loss /= len(loader.dataset)
-    epoch_loss_list.append(total_loss)  # Append epoch loss to epoch_loss_list
+    epoch_loss_list.append(total_loss)
 
     print('Epoch %d, loss = %g' % (i, total_loss))
 
-# Plotting the loss
+
 plt.figure(figsize=(10, 6))
 plt.plot(epoch_loss_list)
 plt.title('MSE a través de las epocas')
@@ -168,8 +168,8 @@ plt.plot(running_avg_loss, color='red')
 plt.title("Función de pérdida durante el entrenamiento")
 plt.show()
 
-# Definimos un método para mostrar las predicciones como un scatter plot 
-# y graficamos la recta de regresión para esos datos.
+
+
 def plotScatter(x_data, y_data, title, fit_line=True):
     x_data = x_data.squeeze() 
     plt.figure()
@@ -184,13 +184,13 @@ def plotScatter(x_data, y_data, title, fit_line=True):
         plt.plot( X, LinearRegression().fit(X, Y).predict(X) )
     plt.show()    
 
-# Dibujamos el ground truth vs las predicciones en los datos de entrenamiento
+
 
 py = net(torch.FloatTensor(datos_tr.cpu()).to(device))
 y_pred_train = py.cpu().detach().numpy()
 plotScatter(salida_esperada_tr, y_pred_train, "Training data")
 
-# Dibujamos el ground truth vs las predicciones en los datos de test
+
 py = net(torch.FloatTensor(datos_ts.cpu()).to(device))
 y_pred_test = py.cpu().detach().numpy()
 plotScatter(salida_esperada_ts, y_pred_test, "Test data")
@@ -202,5 +202,5 @@ print(net)
 
 input_example = datos_ts[0].unsqueeze(0).to(device)
 
-# Considerando que tienes un modelo llamado `model` y una entrada de ejemplo llamada `input_example`
+
 torch.onnx.export(net, input_example, 'model_MLP_1.onnx',input_names=['input'], output_names=['output'])
